@@ -79,6 +79,27 @@ python -m pytest backend/tests -v
 | `GET /bankroll` / `GET /bets` | Paper betting / bankroll |
 | `POST /backtest` | Backtesting framework |
 | `GET /logs` | System logs |
+| `GET /settings` | Settings (API keys di-mask, router status) |
+| `PUT /settings` | Simpan settings (multi-key Odds API, OpenRouter, Telegram, strategi) |
+| `GET /settings/odds-api/status` | Status router multi-key (health per key) |
+| `POST /settings/test-odds-key` | Test koneksi satu The Odds API key |
+| `POST /settings/test-openrouter` | Test koneksi OpenRouter |
+
+## Multi-Key Router (The Odds API)
+
+Sistem mendukung **banyak API key** dengan **auto failover** — kelola langsung dari
+halaman **Settings** di dashboard:
+
+- Key **A** kena rate limit (429) → otomatis beralih ke key **B** → lalu **C**, dst.
+- Key kena **401/403** → dinonaktifkan permanen sampai di-reset/test ulang.
+- Key kena **5xx / timeout** → cooldown 30 detik, lalu dicoba lagi.
+- Router memutar (round-robin) antar key sehat; status per key (requests, failures,
+  cooldown, last error) tampil live di Settings.
+- Keys tersimpan di database (tabel `system_settings`), **tidak pernah** ditampilkan
+  penuh di UI — hanya di-mask (mis. `abc1...6KEY`).
+
+Juga tersedia di `.env` untuk key tunggal: `THE_ODDS_API_KEY`. Jika diisi, otomatis
+didaftarkan sebagai key pertama di router.
 
 ## Konfigurasi (.env)
 

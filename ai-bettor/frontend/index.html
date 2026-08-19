@@ -1,428 +1,1190 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Bettor — Command Center</title>
+<title>AI BETTOR — Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root {
-  --bg: #0b0f17;
-  --bg2: #111827;
-  --card: #151e2e;
-  --border: #243249;
-  --text: #e5eaf3;
-  --muted: #8a94a8;
-  --green: #22c55e;
-  --red: #ef4444;
-  --yellow: #eab308;
-  --blue: #3b82f6;
-  --purple: #a855f7;
+  --bg: #020617;
+  --bg-2: #0B1120;
+  --card: #0E1223;
+  --card-2: #151A2E;
+  --border: #24304A;
+  --border-2: #334155;
+  --text: #E2E8F0;
+  --text-2: #94A3B8;
+  --text-3: #64748B;
+  --primary: #3B82F6;
+  --primary-2: #1E40AF;
+  --accent: #F59E0B;
+  --green: #10B981;
+  --red: #EF4444;
+  --purple: #8B5CF6;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font-sans: "Fira Sans", system-ui, sans-serif;
+  --font-mono: "Fira Code", monospace;
+  --shadow: 0 4px 24px rgba(2,6,23,.55);
+  --glow-blue: 0 0 0 1px rgba(59,130,246,.35), 0 0 24px rgba(59,130,246,.12);
 }
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
-.topbar { display: flex; align-items: center; gap: 12px; padding: 14px 24px; background: var(--bg2); border-bottom: 1px solid var(--border); }
-.topbar h1 { font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
-.badge { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; }
-.badge.ok { background: rgba(34,197,94,.15); color: var(--green); }
-.badge.warn { background: rgba(234,179,8,.15); color: var(--yellow); }
-.topbar .spacer { flex: 1; }
-nav { display: flex; gap: 4px; padding: 10px 24px; background: var(--bg); overflow-x: auto; border-bottom: 1px solid var(--border); }
-nav button { background: transparent; border: 1px solid transparent; color: var(--muted); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap; }
-nav button.active { background: var(--card); color: var(--text); border-color: var(--border); }
-main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+html { font-size: 16px; }
+body {
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(1000px 500px at 85% -10%, rgba(59,130,246,.10), transparent 60%),
+    radial-gradient(800px 400px at -10% 20%, rgba(139,92,246,.07), transparent 60%),
+    radial-gradient(600px 400px at 50% 110%, rgba(245,158,11,.05), transparent 60%);
+  background-attachment: fixed;
+}
+::selection { background: rgba(59,130,246,.35); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+button { font-family: inherit; cursor: pointer; }
+input, select { font-family: inherit; color: var(--text); }
+
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 236px; flex-shrink: 0;
+  position: sticky; top: 0; height: 100vh;
+  background: rgba(11,17,32,.82);
+  backdrop-filter: blur(20px);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 20px 12px;
+  gap: 8px;
+  z-index: 30;
+}
+.brand { display: flex; align-items: center; gap: 10px; padding: 8px 12px 20px; }
+.brand-logo {
+  width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--primary-2), var(--primary));
+  display: grid; place-items: center;
+  box-shadow: var(--glow-blue);
+}
+.brand h1 { font-size: 16px; font-weight: 700; letter-spacing: .5px; font-family: var(--font-mono); }
+.brand small { display: block; font-size: 10px; color: var(--text-2); font-weight: 400; letter-spacing: 1.5px; text-transform: uppercase; }
+.nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.nav-btn {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 44px; padding: 0 12px;
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-sm);
+  color: var(--text-2); font-size: 14px; font-weight: 500; text-align: left;
+  transition: background 200ms ease, color 200ms ease, border-color 200ms ease, transform 150ms ease;
+}
+.nav-btn svg { width: 18px; height: 18px; flex-shrink: 0; opacity: .8; }
+.nav-btn:hover { background: rgba(59,130,246,.08); color: var(--text); }
+.nav-btn:active { transform: scale(.97); }
+.nav-btn.active {
+  background: linear-gradient(90deg, rgba(59,130,246,.16), rgba(59,130,246,.04));
+  border-color: rgba(59,130,246,.35);
+  color: #fff;
+}
+.nav-btn.active svg { opacity: 1; color: var(--primary); }
+.nav-label { margin: 16px 12px 4px; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-3); }
+.sidebar-foot { padding: 12px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-3); }
+.mode-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 99px; letter-spacing: 1px;
+  background: rgba(16,185,129,.12); color: var(--green); border: 1px solid rgba(16,185,129,.35);
+}
+
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 24px;
+  background: rgba(2,6,23,.82);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+.topbar-title h2 { font-size: 18px; font-weight: 600; }
+.topbar-title p { font-size: 12px; color: var(--text-2); }
+.topbar-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12px; font-weight: 500; color: var(--text-2);
+  padding: 5px 12px; border-radius: 99px;
+  background: var(--card); border: 1px solid var(--border);
+  transition: border-color 200ms ease, color 200ms ease;
+}
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); flex-shrink: 0; }
+.status-dot.ok { background: var(--green); box-shadow: 0 0 8px rgba(16,185,129,.6); }
+.status-dot.warn { background: var(--accent); box-shadow: 0 0 8px rgba(245,158,11,.6); }
+.status-dot.bad { background: var(--red); box-shadow: 0 0 8px rgba(239,68,68,.6); }
+.clock { font-family: var(--font-mono); font-size: 13px; color: var(--text-2); padding: 5px 12px; border-radius: 99px; background: var(--card); border: 1px solid var(--border); }
+
+.content { padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 1440px; width: 100%; margin: 0 auto; }
 .page { display: none; }
-.page.active { display: block; }
+.page.active { display: flex; flex-direction: column; gap: 20px; animation: pageIn 350ms cubic-bezier(.16,1,.3,1); }
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.card {
+  background: linear-gradient(180deg, rgba(21,26,46,.75), rgba(14,18,35,.9));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.card-h h3 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.card-h h3 svg { width: 16px; height: 16px; color: var(--primary); }
+.card-b { padding: 20px; }
+
 .grid { display: grid; gap: 16px; }
-.grid-4 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.grid-2 { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
-.card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 12px; }
-.stat { display: flex; flex-direction: column; gap: 4px; }
-.stat .value { font-size: 26px; font-weight: 700; }
-.stat .label { font-size: 12px; color: var(--muted); }
-.stat .sub { font-size: 12px; color: var(--muted); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 1200px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 768px) { .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+.kpi { padding: 20px; display: flex; flex-direction: column; gap: 8px; transition: border-color 200ms ease, transform 200ms ease; }
+.kpi:hover { border-color: var(--border-2); transform: translateY(-1px); }
+.kpi-label { font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); display: flex; align-items: center; gap: 8px; }
+.kpi-label svg { width: 14px; height: 14px; color: var(--primary); }
+.kpi-value { font-family: var(--font-mono); font-size: 26px; font-weight: 700; letter-spacing: -.5px; }
+.kpi-sub { font-size: 12px; color: var(--text-2); }
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+
+.table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
-th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
-.tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
-.tag.bet { background: rgba(34,197,94,.15); color: var(--green); }
-.tag.nobet { background: rgba(239,68,68,.15); color: var(--red); }
-.tag.pass { background: rgba(234,179,8,.15); color: var(--yellow); }
-.agent { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-.agent:last-child { border-bottom: none; }
-.agent .dot { width: 10px; height: 10px; border-radius: 50%; }
-.agent .dot.active { background: var(--blue); box-shadow: 0 0 8px var(--blue); }
-.agent .dot.complete { background: var(--green); }
-.agent .dot.error { background: var(--red); }
-.agent .dot.idle { background: var(--muted); }
-.agent .name { font-weight: 600; font-size: 14px; }
-.agent .task { font-size: 12px; color: var(--muted); }
-.agent .meta { margin-left: auto; text-align: right; font-size: 11px; color: var(--muted); }
-.btn { background: var(--blue); border: none; color: white; padding: 10px 18px; border-radius: 8px; font-weight: 600; cursor: pointer; }
-.btn:hover { opacity: .9; }
-.btn.secondary { background: var(--card); border: 1px solid var(--border); color: var(--text); }
-.log { font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--muted); font-family: monospace; }
-.log .ok { color: var(--green); }
-.log .err { color: var(--red); }
-.pick { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--bg2); }
-.pick .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.pick .score { font-size: 22px; font-weight: 800; }
-@media (max-width: 700px) { nav { flex-wrap: wrap; } main { padding: 14px; } }
+th { text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-3); padding: 12px 20px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 12px 20px; border-bottom: 1px solid rgba(36,48,74,.55); vertical-align: middle; }
+tbody tr { transition: background 150ms ease; }
+tbody tr:hover { background: rgba(59,130,246,.05); }
+tbody tr:last-child td { border-bottom: none; }
+.mono { font-family: var(--font-mono); font-size: 12.5px; }
+.empty { padding: 32px; text-align: center; color: var(--text-3); font-size: 13px; }
+
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 99px; letter-spacing: .4px; white-space: nowrap; }
+.badge svg { width: 11px; height: 11px; }
+.b-green { background: rgba(16,185,129,.13); color: var(--green); border: 1px solid rgba(16,185,129,.35); }
+.b-red { background: rgba(239,68,68,.13); color: var(--red); border: 1px solid rgba(239,68,68,.35); }
+.b-amber { background: rgba(245,158,11,.13); color: var(--accent); border: 1px solid rgba(245,158,11,.35); }
+.b-blue { background: rgba(59,130,246,.13); color: var(--primary); border: 1px solid rgba(59,130,246,.35); }
+.b-gray { background: rgba(100,116,139,.13); color: var(--text-2); border: 1px solid var(--border); }
+.b-purple { background: rgba(139,92,246,.13); color: var(--purple); border: 1px solid rgba(139,92,246,.35); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 38px; padding: 0 16px;
+  border-radius: var(--radius-sm); border: 1px solid var(--border-2);
+  background: var(--card-2); color: var(--text);
+  font-size: 13px; font-weight: 500;
+  transition: background 200ms ease, border-color 200ms ease, transform 150ms ease, box-shadow 200ms ease;
+}
+.btn:hover { border-color: var(--primary); }
+.btn:active { transform: scale(.97); }
+.btn svg { width: 15px; height: 15px; }
+.btn-primary { background: linear-gradient(135deg, var(--primary-2), var(--primary)); border-color: transparent; color: #fff; box-shadow: 0 2px 12px rgba(59,130,246,.35); }
+.btn-primary:hover { box-shadow: 0 4px 20px rgba(59,130,246,.5); }
+.btn-accent { background: linear-gradient(135deg, #B45309, var(--accent)); border-color: transparent; color: #fff; }
+.btn-danger { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.4); color: var(--red); }
+.btn-danger:hover { background: rgba(239,68,68,.22); }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn-sm { min-height: 30px; padding: 0 12px; font-size: 12px; }
+
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label { font-size: 12px; font-weight: 600; color: var(--text-2); letter-spacing: .3px; }
+.field label small { color: var(--text-3); font-weight: 400; }
+.field input, .field select {
+  min-height: 40px; padding: 0 12px;
+  background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  font-size: 13.5px; transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+.field input:focus, .field select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,.15); outline: none; }
+.field select { cursor: pointer; }
+.field .hint { font-size: 11px; color: var(--text-3); }
+.form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; } }
+
+.agent-tabs { display: flex; gap: 8px; flex-wrap: wrap; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.agent-tab {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 40px; padding: 0 16px;
+  border-radius: 99px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-2); font-size: 13px; font-weight: 500;
+  transition: all 200ms ease;
+}
+.agent-tab:hover { border-color: var(--border-2); color: var(--text); }
+.agent-tab.active { background: rgba(59,130,246,.14); border-color: rgba(59,130,246,.5); color: #fff; }
+.agent-tab .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
+.agent-tab .dot.ok { background: var(--green); box-shadow: 0 0 6px rgba(16,185,129,.7); }
+.agent-tab .dot.warn { background: var(--accent); }
+.agent-tab .dot.bad { background: var(--red); }
+
+.agent-panel { display: none; padding: 20px; gap: 20px; }
+.agent-panel.active { display: grid; grid-template-columns: 1fr 1fr; }
+@media (max-width: 900px) { .agent-panel.active { grid-template-columns: 1fr; } }
+.agent-desc { display: flex; flex-direction: column; gap: 16px; }
+.agent-desc h4 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.agent-desc p { font-size: 13.5px; color: var(--text-2); line-height: 1.6; }
+.tool-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); background: var(--bg-2); border: 1px solid var(--border); border-radius: 99px; padding: 4px 11px; font-family: var(--font-mono); }
+.tool-chip svg { width: 12px; height: 12px; color: var(--primary); }
+.task-list { display: flex; flex-direction: column; gap: 8px; }
+.task-item { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--text-2); }
+.task-item svg { width: 14px; height: 14px; color: var(--green); flex-shrink: 0; }
+
+.agent-stats { display: flex; flex-direction: column; gap: 16px; }
+.stat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px dashed rgba(36,48,74,.6); font-size: 13px; }
+.stat-row:last-child { border-bottom: none; }
+.stat-row .k { color: var(--text-3); }
+.stat-row .v { font-family: var(--font-mono); font-size: 12.5px; color: var(--text); }
+.output-box { background: var(--bg-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; font-family: var(--font-mono); font-size: 11.5px; color: var(--text-2); max-height: 240px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+
+.settings-section { display: flex; flex-direction: column; gap: 20px; }
+.api-key-row { display: grid; grid-template-columns: 42px 1fr auto auto; gap: 12px; align-items: center; }
+@media (max-width: 768px) { .api-key-row { grid-template-columns: 1fr; } }
+.key-index { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-family: var(--font-mono); font-weight: 700; font-size: 13px; background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.35); color: var(--primary); }
+.router-note { display: flex; gap: 10px; align-items: flex-start; background: rgba(59,130,246,.06); border: 1px solid rgba(59,130,246,.25); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 12.5px; color: var(--text-2); line-height: 1.55; }
+.router-note svg { width: 16px; height: 16px; color: var(--primary); flex-shrink: 0; margin-top: 2px; }
+.key-status { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.scan-controls { display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.step-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px dashed rgba(36,48,74,.6); }
+.step-row:last-child { border-bottom: none; }
+.step-num { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-family: var(--font-mono); font-size: 11px; font-weight: 700; background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.35); color: var(--primary); flex-shrink: 0; }
+
+.toast-wrap { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 100; }
+.toast { min-width: 260px; max-width: 380px; padding: 12px 16px; border-radius: var(--radius-sm); background: var(--card-2); border: 1px solid var(--border-2); font-size: 13px; box-shadow: var(--shadow); display: flex; align-items: center; gap: 10px; animation: toastIn 300ms cubic-bezier(.16,1,.3,1); }
+.toast.ok { border-color: rgba(16,185,129,.5); }
+.toast.err { border-color: rgba(239,68,68,.5); }
+.toast svg { width: 16px; height: 16px; flex-shrink: 0; }
+.toast.ok svg { color: var(--green); }
+.toast.err svg { color: var(--red); }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px) scale(.96); } to { opacity: 1; transform: none; } }
+
+.spin { animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-bar { height: 3px; border-radius: 2px; background: rgba(59,130,246,.15); overflow: hidden; position: relative; }
+.loading-bar::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, var(--primary), transparent); animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
+
+.stagger > * { animation: cardIn 400ms cubic-bezier(.16,1,.3,1) backwards; }
+.stagger > *:nth-child(1) { animation-delay: 40ms; }
+.stagger > *:nth-child(2) { animation-delay: 100ms; }
+.stagger > *:nth-child(3) { animation-delay: 160ms; }
+.stagger > *:nth-child(4) { animation-delay: 220ms; }
+.stagger > *:nth-child(5) { animation-delay: 280ms; }
+.stagger > *:nth-child(6) { animation-delay: 340ms; }
+@keyframes cardIn { from { opacity: 0; transform: scale(.96) translateY(10px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+.burger { display: none; place-items: center; width: 44px; height: 44px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.burger svg { width: 20px; height: 20px; color: var(--text); }
+.sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(2,6,23,.6); z-index: 25; }
+@media (max-width: 900px) {
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); transition: transform 250ms cubic-bezier(.16,1,.3,1); width: 260px; }
+  .sidebar.open { transform: none; }
+  .content { padding: 16px; }
+  .topbar { padding: 12px 16px; }
+  .burger { display: grid; }
+  .sidebar-backdrop.show { display: block; }
+}
 </style>
 </head>
 <body>
-<div class="topbar">
-  <h1>🎯 AI BETTOR</h1>
-  <span id="modeBadge" class="badge ok">PAPER</span>
-  <span id="dbBadge" class="badge warn">DB: ...</span>
-  <span id="apiBadge" class="badge warn">ODDS API: ...</span>
-  <div class="spacer"></div>
-  <span id="clock" style="font-size:13px;color:var(--muted)"></span>
+<div class="layout">
+  <div class="sidebar-backdrop" id="backdrop"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+      </div>
+      <div>
+        <h1>AI BETTOR</h1>
+        <small>Command Center</small>
+      </div>
+    </div>
+    <nav class="nav" aria-label="Main navigation">
+      <div class="nav-label">Overview</div>
+      <button class="nav-btn active" data-page="dashboard" aria-label="Dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-btn" data-page="scanner" aria-label="Live Scanner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6h.01"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/><path d="M12 18h.01"/><path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/><circle cx="12" cy="12" r="2"/><path d="m13.41 10.59 5.66-5.66"/></svg>
+        Live Scanner
+      </button>
+      <button class="nav-btn" data-page="agents" aria-label="AI Agents">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+        AI Agents
+      </button>
+      <div class="nav-label">Data</div>
+      <button class="nav-btn" data-page="matches" aria-label="Matches">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
+        Matches
+      </button>
+      <button class="nav-btn" data-page="predictions" aria-label="Predictions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Predictions
+      </button>
+      <button class="nav-btn" data-page="odds" aria-label="Odds">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+        Odds
+      </button>
+      <button class="nav-btn" data-page="risk" aria-label="Risk">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        Risk
+      </button>
+      <div class="nav-label">Insight</div>
+      <button class="nav-btn" data-page="performance" aria-label="Performance">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 13v4"/><path d="M11 9v8"/><path d="M15 5v12"/><path d="M19 11v6"/></svg>
+        Performance
+      </button>
+      <button class="nav-btn" data-page="backtest" aria-label="Backtest">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>
+        Backtest
+      </button>
+      <button class="nav-btn" data-page="bankroll" aria-label="Bankroll">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+        Bankroll
+      </button>
+      <div class="nav-label">System</div>
+      <button class="nav-btn" data-page="settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+      </button>
+    </nav>
+    <div class="sidebar-foot">
+      <span class="mode-pill" id="modePill">PAPER</span>
+      <div style="margin-top:8px">v0.1.0 · multi-agent</div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="burger" id="burger" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg>
+      </button>
+      <div class="topbar-title">
+        <h2 id="pageTitle">Dashboard</h2>
+        <p id="pageSub">Overview of the autonomous betting agent</p>
+      </div>
+      <div class="topbar-right">
+        <span class="status-pill"><span class="status-dot" id="dotOdds"></span>Odds API <span id="oddsKeyCount" class="mono"></span></span>
+        <span class="status-pill"><span class="status-dot" id="dotLLM"></span>OpenRouter</span>
+        <span class="status-pill"><span class="status-dot" id="dotTg"></span>Telegram</span>
+        <span class="status-pill"><span class="status-dot" id="dotDb"></span>DB</span>
+        <span class="clock" id="clock">--:--:--</span>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ================= DASHBOARD ================= -->
+      <section class="page active stagger" id="page-dashboard">
+        <div class="grid grid-4">
+          <div class="card kpi"><div class="kpi-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>Bankroll</div><div class="kpi-value" id="kpiBankroll">$1,000.00</div><div class="kpi-sub">Paper trading mode</div></div>
+          <div class="card kpi"><div class="kpi-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Total Bets</div><div class="kpi-value" id="kpiBets">0</div><div class="kpi-sub" id="kpiBetsSub">0 wins · 0 losses</div></div>
+          <div class="card kpi"><div class="kpi-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 13v4"/><path d="M11 9v8"/><path d="M15 5v12"/><path d="M19 11v6"/></svg>Win Rate</div><div class="kpi-value" id="kpiWinRate">—</div><div class="kpi-sub">settled bets</div></div>
+          <div class="card kpi"><div class="kpi-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>ROI</div><div class="kpi-value" id="kpiRoi">0.0%</div><div class="kpi-sub" id="kpiProfitSub">P&amp;L $0.00</div></div>
+        </div>
+        <div class="grid grid-2">
+          <div class="card">
+            <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>Agent Fleet</h3><a class="btn btn-sm" href="#" data-nav="agents">Open Agents</a></div>
+            <div class="card-b" id="dashAgents"><div class="empty">Loading agents…</div></div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>Latest Predictions</h3><a class="btn btn-sm" href="#" data-nav="predictions">View All</a></div>
+            <div class="table-wrap"><table><thead><tr><th>Match</th><th>Decision</th><th>Odds</th><th>Score</th></tr></thead><tbody id="dashPreds"><tr><td colspan="4" class="empty">No predictions yet</td></tr></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6h.01"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/><path d="M12 18h.01"/><path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/><circle cx="12" cy="12" r="2"/><path d="m13.41 10.59 5.66-5.66"/></svg>System Logs</h3></div>
+          <div class="table-wrap"><table><thead><tr><th>Time</th><th>Service</th><th>Agent</th><th>Action</th><th>Status</th><th>Latency</th></tr></thead><tbody id="dashLogs"><tr><td colspan="6" class="empty">No activity yet</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- ================= SCANNER ================= -->
+      <section class="page" id="page-scanner">
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.07 4.93A10 10 0 0 0 6.99 3.34"/><path d="M4 6h.01"/><path d="M2.29 9.62A10 10 0 1 0 21.31 8.35"/><path d="M16.24 7.76A6 6 0 1 0 8.23 16.67"/><path d="M12 18h.01"/><path d="M17.99 11.66A6 6 0 0 1 15.77 16.67"/><circle cx="12" cy="12" r="2"/><path d="m13.41 10.59 5.66-5.66"/></svg>Live Match Scanner</h3><span class="badge b-blue" id="scanBadge">IDLE</span></div>
+          <div class="card-b">
+            <div class="scan-controls">
+              <div class="field" style="flex:1;min-width:150px"><label for="scSport">Sport</label><select id="scSport"><option value="soccer" selected>Soccer</option><option value="basketball">Basketball</option><option value="tennis">Tennis</option><option value="baseball">Baseball</option><option value="americanfootball">American Football</option></select></div>
+              <div class="field" style="flex:1;min-width:150px"><label for="scRegion">Region</label><select id="scRegion"><option value="idf" selected>Indonesia</option><option value="eu">Europe</option><option value="uk">United Kingdom</option><option value="us">United States</option><option value="au">Australia</option></select></div>
+              <div class="field" style="flex:2;min-width:220px"><label for="scMarkets">Markets</label><select id="scMarkets"><option value="1X2,h2h,spreads,totals" selected>1X2 + Handicap + Over/Under</option><option value="h2h">1X2 (h2h)</option><option value="spreads">Asian Handicap (spreads)</option><option value="totals">Over/Under (totals)</option></select></div>
+              <button class="btn btn-primary" id="btnScan" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Scan Matches</button>
+            </div>
+            <div id="scanLoading" style="display:none;margin-top:16px"><div class="loading-bar"></div><p style="font-size:12px;color:var(--text-2);margin-top:8px">Scout is fetching fixtures &amp; odds from The Odds API…</p></div>
+            <div id="scanResults" style="margin-top:16px;display:flex;flex-direction:column;gap:12px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Pipeline Execution</h3></div>
+          <div class="card-b" id="pipelineSteps"><div class="empty">Run a scan to see the agent pipeline in action</div></div>
+        </div>
+      </section>
+
+      <!-- ================= AGENTS ================= -->
+      <section class="page" id="page-agents">
+        <div class="card">
+          <div class="agent-tabs" role="tablist" aria-label="Agent tabs" id="agentTabs"></div>
+          <div id="agentPanels"></div>
+        </div>
+      </section>
+
+      <!-- ================= MATCHES ================= -->
+      <section class="page" id="page-matches">
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>Matches</h3><button class="btn btn-sm" id="btnRefreshMatches">Refresh</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Match</th><th>League</th><th>Kickoff</th><th>Status</th></tr></thead><tbody id="matchesBody"><tr><td colspan="4" class="empty">No matches yet — run a scan first</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- ================= PREDICTIONS ================= -->
+      <section class="page" id="page-predictions">
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Predictions</h3><div class="key-status"><span class="badge b-green">BET</span><span class="badge b-amber">WATCH</span><span class="badge b-blue">PASS</span><span class="badge b-gray">NO BET</span></div></div>
+          <div class="table-wrap"><table><thead><tr><th>Match</th><th>Decision</th><th>Selection</th><th>Odds</th><th>Model P</th><th>Edge</th><th>EV</th><th>Score</th><th>Risk</th></tr></thead><tbody id="predsBody"><tr><td colspan="9" class="empty">No predictions yet</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- ================= ODDS ================= -->
+      <section class="page" id="page-odds">
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>Odds Snapshots</h3><button class="btn btn-sm" id="btnRefreshOdds">Refresh</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Match</th><th>Bookmaker</th><th>Market</th><th>Selection</th><th>Line</th><th>Odds</th><th>Updated</th></tr></thead><tbody id="oddsBody"><tr><td colspan="7" class="empty">No odds stored yet</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- ================= RISK ================= -->
+      <section class="page" id="page-risk">
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>Risk &amp; Exposure</h3></div>
+          <div class="card-b">
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Risk assessments are generated automatically for every analyzed match. Use the simulator below to preview risk for a hypothetical candidate.</p>
+            <div class="form-grid">
+              <div class="field"><label for="rkProb">Model Probability</label><input type="number" id="rkProb" min="0" max="1" step="0.01" value="0.55"></div>
+              <div class="field"><label for="rkOdds">Decimal Odds</label><input type="number" id="rkOdds" min="1" step="0.01" value="2.00"></div>
+              <div class="field"><label for="rkExposure">Current Exposure ($)</label><input type="number" id="rkExposure" min="0" value="0"></div>
+              <div class="field"><label for="rkBank">Bankroll ($)</label><input type="number" id="rkBank" min="0" value="1000"></div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:12px;align-items:center"><button class="btn btn-primary" id="btnRiskAssess">Assess Risk</button><span class="badge b-gray" id="riskResultTag"></span></div>
+            <div id="riskResult" class="output-box" style="margin-top:16px;display:none"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PERFORMANCE ================= -->
+      <section class="page" id="page-performance">
+        <div class="grid grid-4">
+          <div class="card kpi"><div class="kpi-label">Bets</div><div class="kpi-value" id="perfBets">0</div></div>
+          <div class="card kpi"><div class="kpi-label">Win Rate</div><div class="kpi-value" id="perfWr">—</div></div>
+          <div class="card kpi"><div class="kpi-label">Profit / Loss</div><div class="kpi-value" id="perfPnL">$0</div></div>
+          <div class="card kpi"><div class="kpi-label">Avg Odds</div><div class="kpi-value" id="perfOdds">—</div></div>
+        </div>
+        <div class="grid grid-2">
+          <div class="card"><div class="card-h"><h3>ROI</h3></div><div class="card-b"><div style="height:200px"><canvas id="perfChart"></canvas></div></div></div>
+          <div class="card"><div class="card-h"><h3>By Market</h3></div><div class="table-wrap"><table><thead><tr><th>Market</th><th>Bets</th><th>Wins</th><th>Staked</th><th>Profit</th></tr></thead><tbody id="perfMarket"><tr><td colspan="5" class="empty">No data</td></tr></tbody></table></div></div>
+        </div>
+      </section>
+
+      <!-- ================= BACKTEST ================= -->
+      <section class="page" id="page-backtest">
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg>Backtest Engine</h3><button class="btn btn-primary btn-sm" id="btnBacktest">Run Demo (30 matches)</button></div>
+          <div class="card-b">
+            <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Runs the full pipeline (scoring → bet sizing → P&amp;L) over a historical dataset. Produces ROI, win rate, drawdown, and calibration error.</p>
+            <div id="backtestLoading" style="display:none;margin-bottom:16px"><div class="loading-bar"></div></div>
+            <div id="backtestResult" style="display:none">
+              <div class="grid grid-4" style="margin-bottom:20px">
+                <div class="card kpi"><div class="kpi-label">Total Bets</div><div class="kpi-value" id="btBets">0</div></div>
+                <div class="card kpi"><div class="kpi-label">Win Rate</div><div class="kpi-value" id="btWr">—</div></div>
+                <div class="card kpi"><div class="kpi-label">ROI</div><div class="kpi-value" id="btRoi">—</div></div>
+                <div class="card kpi"><div class="kpi-label">Max Drawdown</div><div class="kpi-value" id="btDd">—</div></div>
+              </div>
+              <div class="grid grid-2">
+                <div class="field"><div class="hint" style="font-size:12px">Calibration error: <b id="btCalib" class="mono" style="color:var(--text)">—</b> &nbsp;·&nbsp; Avg odds: <b id="btAvgOdds" class="mono" style="color:var(--text)">—</b> &nbsp;·&nbsp; Avg EV: <b id="btAvgEv" class="mono" style="color:var(--text)">—</b></div></div>
+                <div style="text-align:right"><span class="badge b-green" id="btGrade"></span></div>
+              </div>
+              <div class="table-wrap" style="margin-top:16px"><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody id="btRows"></tbody></table></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= BANKROLL ================= -->
+      <section class="page" id="page-bankroll">
+        <div class="grid grid-4">
+          <div class="card kpi"><div class="kpi-label">Balance</div><div class="kpi-value" id="brBalance">$1,000.00</div></div>
+          <div class="card kpi"><div class="kpi-label">Staked</div><div class="kpi-value" id="brStaked">$0</div></div>
+          <div class="card kpi"><div class="kpi-label">Won</div><div class="kpi-value" id="brWon">$0</div></div>
+          <div class="card kpi"><div class="kpi-label">ROI</div><div class="kpi-value" id="brRoi">0.0%</div></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>Bet History</h3></div>
+          <div class="table-wrap"><table><thead><tr><th>Match</th><th>Market</th><th>Odds</th><th>Stake</th><th>Status</th><th>Result</th><th>P&amp;L</th><th>Time</th></tr></thead><tbody id="betsBody"><tr><td colspan="8" class="empty">No bets placed yet</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <!-- ================= SETTINGS ================= -->
+      <section class="page" id="page-settings">
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>The Odds API — Multi-Key Router</h3><button class="btn btn-sm" id="btnAddKey"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add Key</button></div>
+          <div class="card-b settings-section">
+            <div class="router-note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+              <span>Multi-key failover aktif: jika key <b>A</b> kena rate limit (429) atau gagal, sistem otomatis beralih ke key <b>B</b>, lalu <b>C</b>, dan seterusnya. Key yang kena 401 akan dinonaktifkan permanen sampai kamu ganti/test ulang. Keys tersimpan aman di server — tidak pernah ditampilkan penuh di UI.</span>
+            </div>
+            <div id="keyRows"></div>
+            <div id="routerStatus"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>OpenRouter (LLM Reasoning Layer)</h3></div>
+          <div class="card-b settings-section">
+            <div class="form-grid">
+              <div class="field"><label for="orKey">API Key <small id="orKeyStatus"></small></label><input type="password" id="orKey" placeholder="sk-or-v1-..." autocomplete="off"></div>
+              <div class="field"><label for="orModel">Model</label><input type="text" id="orModel" list="modelList" placeholder="openrouter/auto"><datalist id="modelList"><option value="openrouter/auto"></option><option value="deepseek/deepseek-chat"></option><option value="openai/gpt-4o-mini"></option><option value="anthropic/claude-3.5-haiku"></option><option value="google/gemini-flash-1.5"></option><option value="meta-llama/llama-3.1-8b-instruct"></option></datalist></div>
+            </div>
+            <div><button class="btn" id="btnTestOR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>Test Connection</button></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>Telegram Notifications <small style="color:var(--text-3);font-weight:400">(opsional)</small></h3></div>
+          <div class="card-b settings-section">
+            <div class="form-grid">
+              <div class="field"><label for="tgToken">Bot Token <small id="tgTokenStatus"></small></label><input type="password" id="tgToken" placeholder="123456:ABC-DEF..." autocomplete="off"></div>
+              <div class="field"><label for="tgChat">Chat ID <small id="tgChatStatus"></small></label><input type="text" id="tgChat" placeholder="-1001234567890"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Strategy Parameters</h3></div>
+          <div class="card-b settings-section">
+            <div class="form-grid">
+              <div class="field"><label for="sMinOdds">Minimum Acceptable Odds</label><input type="number" id="sMinOdds" step="0.01" min="1.01"></div>
+              <div class="field"><label for="sMinEdge">Minimum Edge</label><input type="number" id="sMinEdge" step="0.001" min="0"></div>
+              <div class="field"><label for="sMinEv">Minimum EV</label><input type="number" id="sMinEv" step="0.001" min="0"></div>
+              <div class="field"><label for="sMinConf">Minimum Confidence (0–100)</label><input type="number" id="sMinConf" min="0" max="100"></div>
+              <div class="field"><label for="sSims">Monte Carlo Simulations</label><input type="number" id="sSims" min="100" step="1000"></div>
+              <div class="field"><label for="sSeed">Random Seed</label><input type="number" id="sSeed"></div>
+              <div class="field"><label for="sTz">Timezone</label><select id="sTz"><option value="Asia/Jakarta">Asia/Jakarta (WIB)</option><option value="Asia/Makassar">Asia/Makassar (WITA)</option><option value="Asia/Jayapura">Asia/Jayapura (WIT)</option><option value="UTC">UTC</option><option value="Europe/London">Europe/London</option></select></div>
+              <div class="field"><label for="sMode">Betting Mode</label><select id="sMode"><option value="PAPER">PAPER (safe)</option><option value="LIVE">LIVE (real stake)</option></select></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:12px">
+          <button class="btn" id="btnSettingsReset">Reset Form</button>
+          <button class="btn btn-primary" id="btnSaveSettings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Save Settings</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
 </div>
 
-<nav>
-  <button data-page="dashboard" class="active">Dashboard</button>
-  <button data-page="scanner">Live Scanner</button>
-  <button data-page="matches">Matches</button>
-  <button data-page="agents">AI Agents</button>
-  <button data-page="predictions">Predictions</button>
-  <button data-page="odds">Odds Movement</button>
-  <button data-page="risk">Risk</button>
-  <button data-page="performance">Performance</button>
-  <button data-page="backtest">Backtesting</button>
-  <button data-page="bankroll">Bankroll</button>
-  <button data-page="logs">System Logs</button>
-</nav>
+<div class="toast-wrap" id="toasts" aria-live="polite"></div><script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const fmt = (n, d = 2) => (n == null || isNaN(n)) ? "—" : Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const fmtMoney = (n) => "$" + fmt(n, 2);
+const fmtPct = (n) => (n == null || isNaN(n)) ? "—" : (n * 100).toFixed(1) + "%";
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-<main>
-  <!-- DASHBOARD -->
-  <section class="page active" id="page-dashboard">
-    <div class="grid grid-4">
-      <div class="card stat"><div class="value" id="d-bankroll">-</div><div class="label">Bankroll</div></div>
-      <div class="card stat"><div class="value" id="d-profit">-</div><div class="label">Total P/L</div></div>
-      <div class="card stat"><div class="value" id="d-roi">-</div><div class="label">ROI</div></div>
-      <div class="card stat"><div class="value" id="d-bets">-</div><div class="label">Bets</div></div>
-    </div>
-    <div style="height:16px"></div>
-    <div class="grid grid-2">
-      <div class="card"><h3>Cumulative P/L</h3><canvas id="chart-pl" height="220"></canvas></div>
-      <div class="card"><h3>Agent Status</h3><div id="agent-mini"></div></div>
-    </div>
-  </section>
-
-  <!-- SCANNER -->
-  <section class="page" id="page-scanner">
-    <div class="card">
-      <h3>Live Scanner</h3>
-      <button class="btn" id="btn-scan">▶ Run Scan</button>
-      <button class="btn secondary" id="btn-scan-demo">Demo Scan (no API key)</button>
-      <div style="height:14px"></div>
-      <pre id="scan-output" style="max-height:500px;overflow:auto;background:var(--bg2);padding:12px;border-radius:8px;font-size:12px;color:var(--muted)">No scan run yet.</pre>
-    </div>
-  </section>
-
-  <!-- MATCHES -->
-  <section class="page" id="page-matches">
-    <div class="card"><h3>Matches</h3>
-      <table><thead><tr><th>Match ID</th><th>Home</th><th>Away</th><th>Kickoff (WIB)</th><th>League</th><th>Status</th></tr></thead>
-      <tbody id="matches-body"></tbody></table>
-      <div id="matches-empty" style="color:var(--muted);padding:12px">No matches in database. Run a scan first.</div>
-    </div>
-  </section>
-
-  <!-- AGENTS -->
-  <section class="page" id="page-agents">
-    <div class="card"><h3>AI Agent Status (from backend)</h3><div id="agents-full"></div></div>
-  </section>
-
-  <!-- PREDICTIONS -->
-  <section class="page" id="page-predictions">
-    <div class="card"><h3>Predictions</h3>
-      <table><thead><tr><th>Match</th><th>Decision</th><th>Market</th><th>Pick</th><th>Odds</th><th>Model Prob</th><th>Edge</th><th>EV</th><th>Conf</th><th>Risk</th></tr></thead>
-      <tbody id="predictions-body"></tbody></table>
-      <div id="predictions-empty" style="color:var(--muted);padding:12px">No predictions yet.</div>
-    </div>
-  </section>
-
-  <!-- ODDS -->
-  <section class="page" id="page-odds">
-    <div class="card"><h3>Odds Movement / Snapshots</h3>
-      <table><thead><tr><th>Time</th><th>Match</th><th>Bookmaker</th><th>Market</th><th>Selection</th><th>Line</th><th>Odds</th></tr></thead>
-      <tbody id="odds-body"></tbody></table>
-      <div id="odds-empty" style="color:var(--muted);padding:12px">No odds snapshots yet.</div>
-    </div>
-  </section>
-
-  <!-- RISK -->
-  <section class="page" id="page-risk">
-    <div class="card"><h3>Risk Management</h3>
-      <div id="risk-content" style="color:var(--muted)">Run analysis to see risk assessments. Use the API: POST /risk-assess</div>
-    </div>
-  </section>
-
-  <!-- PERFORMANCE -->
-  <section class="page" id="page-performance">
-    <div class="grid grid-4">
-      <div class="card stat"><div class="value" id="p-bets">-</div><div class="label">Total Bets</div></div>
-      <div class="card stat"><div class="value" id="p-wins">-</div><div class="label">Wins</div></div>
-      <div class="card stat"><div class="value" id="p-losses">-</div><div class="label">Losses</div></div>
-      <div class="card stat"><div class="value" id="p-winrate">-</div><div class="label">Win Rate</div></div>
-    </div>
-    <div style="height:16px"></div>
-    <div class="grid grid-2">
-      <div class="card"><h3>Performance by Market</h3><canvas id="chart-market" height="200"></canvas></div>
-      <div class="card"><h3>Performance by Confidence</h3><canvas id="chart-conf" height="200"></canvas></div>
-    </div>
-  </section>
-
-  <!-- BACKTEST -->
-  <section class="page" id="page-backtest">
-    <div class="card">
-      <h3>Backtesting</h3>
-      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">POST /backtest with historical matches to see full metrics: ROI, win rate, drawdown, calibration, CLV, by market/league/confidence.</p>
-      <button class="btn secondary" id="btn-backtest-demo">Run Demo Backtest</button>
-      <div style="height:12px"></div>
-      <pre id="backtest-output" style="max-height:400px;overflow:auto;background:var(--bg2);padding:12px;border-radius:8px;font-size:12px;color:var(--muted)">No backtest run yet.</pre>
-    </div>
-  </section>
-
-  <!-- BANKROLL -->
-  <section class="page" id="page-bankroll">
-    <div class="grid grid-4" id="bankroll-stats"></div>
-    <div style="height:16px"></div>
-    <div class="card"><h3>Bet History</h3>
-      <table><thead><tr><th>ID</th><th>Market</th><th>Selection</th><th>Odds</th><th>Stake</th><th>Status</th><th>Result</th></tr></thead>
-      <tbody id="bankroll-body"></tbody></table>
-    </div>
-  </section>
-
-  <!-- LOGS -->
-  <section class="page" id="page-logs">
-    <div class="card"><h3>System Logs</h3><div id="logs-content"></div></div>
-  </section>
-</main>
-
-<script>
-const API = '';
-let charts = {};
-
-async function api(path, opts) {
-  const r = await fetch(API + path, opts);
-  if (!r.ok) throw new Error((await r.text()).slice(0, 200));
-  return r.json();
+/* ---------- Toast ---------- */
+function toast(msg, ok = true) {
+  const el = document.createElement("div");
+  el.className = "toast " + (ok ? "ok" : "err");
+  el.innerHTML = (ok
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>')
+    + "<span>" + esc(msg) + "</span>";
+  $("toasts").appendChild(el);
+  setTimeout(() => { el.style.transition = "opacity 200ms"; el.style.opacity = "0"; setTimeout(() => el.remove(), 250); }, 4000);
 }
 
-function fmt(v, d=2) { return v == null ? '-' : Number(v).toFixed(d); }
-function pct(v) { return v == null ? '-' : (v*100).toFixed(1) + '%'; }
+/* ---------- API ---------- */
+async function api(path, opts = {}) {
+  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
 
-async function loadHealth() {
+/* ---------- Agent metadata (task per agent) ---------- */
+const AGENTS = {
+  data_scout: {
+    name: "Data Scout",
+    role: "Pemain data. Menarik fixtures & odds dari The Odds API (multi-key router), memvalidasi kualitas data 0–100, dan menormalkan struktur sebelum diteruskan ke agent lain.",
+    tools: ["The Odds API v4", "Multi-Key Router", "Data Quality Checker"],
+    steps: ["Fetch fixtures & odds via router failover", "Validasi timestamp, bookmaker coverage, market coverage", "Skor kualitas data 0–100 + warnings", "Normalisasi struktur match"],
+  },
+  quant_analyst: {
+    name: "Quant Analyst",
+    role: "Ahli statistik. Menghitung probabilitas model murni dari data kuantitatif, implied probability dari odds, edge, dan expected value (EV). Probabilitas TIDAK pernah berasal dari LLM.",
+    tools: ["Implied Probability Engine", "EV Engine", "Edge Calculator"],
+    steps: ["Hitung implied probability dari odds", "Hitung edge model vs pasar", "Hitung expected value (EV)", "Evaluasi apakah peluang bernilai"],
+  },
+  market_analyst: {
+    name: "Market Analyst",
+    role: "Analis pasar. Membandingkan semua bandar untuk mencari odds terbaik (line shopping), mendeteksi perbedaan harga antar bookmaker, dan menilai efisiensi pasar.",
+    tools: ["Bookmaker Scanner", "Price Difference Detector", "Best Odds Finder"],
+    steps: ["Scan semua bandar untuk satu pasar", "Identifikasi odds terbaik (best price)", "Ukur selisih harga antar bandar", "Deteksi peluang arbitrase/inefisiensi"],
+  },
+  simulation_analyst: {
+    name: "Simulation Analyst",
+    role: "Jalankan Monte Carlo simulation (default 20.000 run, seed 42 untuk reproducible). Memodelkan skor lewat distribusi Poisson untuk probabilitas home/draw/away + stability.",
+    tools: ["Poisson Model", "Monte Carlo Engine", "Variance & Stability"],
+    steps: ["Estimasi lambda gol tiap tim", "Simulasi 20.000 pertandingan (seeded)", "Hitung home/draw/away probability", "Hitung variance & stability"],
+  },
+  risk_manager: {
+    name: "Risk Manager",
+    role: "Pengawal bankroll. Menilai exposure, drawdown, dan menolak (veto) taruhan yang terlalu berisiko sebelum sampai ke Bettor Brain. Tidak pernah serakah.",
+    tools: ["Risk Assessment", "Exposure Tracker", "Veto Power"],
+    steps: ["Evaluasi size taruhan vs bankroll", "Cek exposure & drawdown berjalan", "Kelola factor psikologis (tilt, chase)", "Veto jika di luar batas risiko"],
+  },
+  bettor_brain: {
+    name: "Bettor Brain",
+    role: "Pengambil keputusan final. Menyintesis output semua agent, memfilter batas odds minimum, scoring 0–100 (NO BET / PASS / WATCH / BET / PREMIUM), lalu memutuskan BET atau NO BET. Tanpa edge → NO BET, tidak memaksa prediksi.",
+    tools: ["Scoring Engine 0–100", "LLM Review Layer", "Telegram Notifier"],
+    steps: ["Gabungkan hasil semua agent", "Terapkan minimum acceptable odds", "Hitung score & label keputusan", "Kirim BET ke Telegram (paper mode)"],
+  },
+};
+const AGENT_ORDER = ["data_scout", "quant_analyst", "market_analyst", "simulation_analyst", "risk_manager", "bettor_brain"];
+
+/* ---------- Badges ---------- */
+function decisionBadge(d) {
+  d = (d || "").toUpperCase();
+  if (d === "BET") return '<span class="badge b-green">BET</span>';
+  if (d === "NO BET") return '<span class="badge b-gray">NO BET</span>';
+  if (d === "WATCH") return '<span class="badge b-amber">WATCH</span>';
+  if (d === "PASS") return '<span class="badge b-blue">PASS</span>';
+  if (d === "PREMIUM") return '<span class="badge b-purple">PREMIUM</span>';
+  return '<span class="badge b-gray">' + esc(d || "—") + '</span>';
+}
+function statusBadge(s) {
+  s = (s || "").toUpperCase();
+  if (s === "COMPLETE" || s === "OK" || s === "SUCCESS") return '<span class="badge b-green">COMPLETE</span>';
+  if (s === "ERROR" || s === "FAILED" || s === "FAIL") return '<span class="badge b-red">ERROR</span>';
+  if (s === "ACTIVE" || s === "RUNNING") return '<span class="badge b-blue">ACTIVE</span>';
+  if (s === "COOLDOWN") return '<span class="badge b-amber">COOLDOWN</span>';
+  if (s === "DISABLED") return '<span class="badge b-red">DISABLED</span>';
+  return '<span class="badge b-gray">' + esc(s || "IDLE") + '</span>';
+}
+function riskBadge(r) {
+  r = (r || "").toUpperCase();
+  if (r === "LOW") return '<span class="badge b-green">LOW</span>';
+  if (r === "MEDIUM") return '<span class="badge b-amber">MEDIUM</span>';
+  if (r === "HIGH") return '<span class="badge b-red">HIGH</span>';
+  return '<span class="badge b-gray">' + esc(r || "—") + '</span>';
+}
+function statusDotClass(st) {
+  if (st === "COMPLETE" || st === "OK") return "ok";
+  if (st === "ERROR" || st === "FAILED" || st === "DISABLED") return "bad";
+  if (st === "ACTIVE" || st === "COOLDOWN" || st === "RUNNING") return "warn";
+  return "";
+}
+
+/* ---------- Navigation ---------- */
+const PAGES = {
+  dashboard: ["Dashboard", "Overview of the autonomous betting agent"],
+  scanner: ["Live Scanner", "Fetch fixtures & odds, run the full agent pipeline"],
+  agents: ["AI Agents", "Six specialists — each with its own task"],
+  matches: ["Matches", "Scanned fixtures from The Odds API"],
+  predictions: ["Predictions", "BET / NO BET decisions from Bettor Brain"],
+  odds: ["Odds", "Bookmaker odds snapshots"],
+  risk: ["Risk", "Risk assessment & exposure control"],
+  performance: ["Performance", "Betting results, ROI, calibration"],
+  backtest: ["Backtest", "Historical validation of the strategy"],
+  bankroll: ["Bankroll", "Paper trading account"],
+  settings: ["Settings", "API keys, multi-key router, strategy"],
+};
+let currentPage = "dashboard";
+function nav(page) {
+  currentPage = page;
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.page === page));
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  $("page-" + page).classList.add("active");
+  $("pageTitle").textContent = PAGES[page][0];
+  $("pageSub").textContent = PAGES[page][1];
+  $("sidebar").classList.remove("open");
+  $("backdrop").classList.remove("show");
+  window.scrollTo({ top: 0 });
+  if (page === "dashboard") refreshDashboard();
+  if (page === "matches") loadMatches();
+  if (page === "predictions") loadPredictions();
+  if (page === "odds") loadOdds();
+  if (page === "performance") loadPerformance();
+  if (page === "bankroll") loadBankroll();
+  if (page === "agents") loadAgents();
+  if (page === "settings") loadSettings();
+}
+document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => nav(b.dataset.page)));
+document.querySelectorAll("[data-nav]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); nav(a.dataset.nav); }));
+$("burger").addEventListener("click", () => { $("sidebar").classList.add("open"); $("backdrop").classList.add("show"); });
+$("backdrop").addEventListener("click", () => { $("sidebar").classList.remove("open"); $("backdrop").classList.remove("show"); });
+
+/* ---------- Clock & health ---------- */
+function tickClock() {
   try {
-    const h = await api('/health');
-    document.getElementById('modeBadge').textContent = (await api('/metrics')).mode || 'PAPER';
-    document.getElementById('dbBadge').textContent = 'DB: ' + h.database;
-    document.getElementById('dbBadge').className = 'badge ' + (h.database === 'connected' ? 'ok' : 'warn');
-    document.getElementById('apiBadge').textContent = 'ODDS API: ' + (h.services.the_odds_api === 'configured' ? 'ON' : 'NO KEY');
-    document.getElementById('apiBadge').className = 'badge ' + (h.services.the_odds_api === 'configured' ? 'ok' : 'warn');
-  } catch (e) { console.warn('health failed', e); }
+    const jak = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "Asia/Jakarta" }).format(new Date());
+    $("clock").textContent = jak + " WIB";
+  } catch (e) { $("clock").textContent = new Date().toLocaleTimeString(); }
 }
+setInterval(tickClock, 1000);
+tickClock();
 
-async function loadDashboard() {
+async function refreshHealth() {
   try {
-    const [b, p] = await Promise.all([api('/bankroll'), api('/performance')]);
-    document.getElementById('d-bankroll').textContent = '$' + fmt(b.current_balance);
-    document.getElementById('d-profit').textContent = '$' + fmt(p.profit_loss);
-    document.getElementById('d-profit').style.color = p.profit_loss >= 0 ? 'var(--green)' : 'var(--red)';
-    document.getElementById('d-roi').textContent = pct(p.roi);
-    document.getElementById('d-bets').textContent = p.total_bets;
-    loadAgentsMini();
-  } catch (e) { console.warn(e); }
+    const h = await api("/health");
+    const svc = (name, elId) => {
+      const s = h.services[name] || "missing";
+      const dot = $(elId);
+      dot.className = "status-dot " + (s === "configured" ? "ok" : s.includes("degraded") ? "warn" : "bad");
+    };
+    svc("the_odds_api", "dotOdds");
+    svc("openrouter", "dotLLM");
+    svc("telegram", "dotTg");
+    $("dotDb").className = "status-dot " + (h.database === "connected" ? "ok" : "bad");
+    if (h.services.the_odds_api === "configured") {
+      try {
+        const st = await api("/settings/odds-api/status");
+        $("oddsKeyCount").textContent = "· " + st.keys.length + " key" + (st.keys.length !== 1 ? "s" : "");
+      } catch (e) { $("oddsKeyCount").textContent = ""; }
+    } else { $("oddsKeyCount").textContent = ""; }
+    try {
+      const m = await api("/metrics");
+      $("modePill").textContent = m.mode;
+    } catch (e) {}
+  } catch (e) { /* server still booting */ }
 }
+setInterval(refreshHealth, 15000);
+refreshHealth();
 
-async function loadAgentsMini() {
+/* ---------- Dashboard ---------- */
+async function refreshDashboard() {
   try {
-    const agents = await api('/agents');
-    const el = document.getElementById('agent-mini');
-    el.innerHTML = Object.entries(agents).map(([name, a]) =>
-      `<div class="agent"><span class="dot ${(a.status||'idle').toLowerCase()}"></span>
-       <div><div class="name">${name.toUpperCase().replace('_',' ')}</div><div class="task">${a.task||''}</div></div>
-       <div class="meta">${a.status||'IDLE'}</div></div>`).join('');
-  } catch (e) { console.warn(e); }
-}
-
-async function loadAgentsFull() {
+    const [perf, bank] = await Promise.all([api("/performance"), api("/bankroll")]);
+    $("kpiBankroll").textContent = fmtMoney(bank.current_balance);
+    $("kpiBets").textContent = perf.total_bets;
+    $("kpiBetsSub").textContent = perf.wins + " wins · " + perf.losses + " losses";
+    $("kpiWinRate").textContent = fmtPct(perf.win_rate);
+    $("kpiRoi").textContent = fmtPct(perf.roi);
+    $("kpiRoi").className = "kpi-value " + (perf.roi >= 0 ? "pos" : "neg");
+    $("kpiProfitSub").textContent = "P&L " + fmtMoney(perf.profit_loss);
+  } catch (e) {}
   try {
-    const agents = await api('/agents');
-    document.getElementById('agents-full').innerHTML = Object.entries(agents).map(([name, a]) =>
-      `<div class="agent"><span class="dot ${(a.status||'idle').toLowerCase()}"></span>
-       <div><div class="name">${name.toUpperCase().replace('_',' ')}</div>
-       <div class="task">Task: ${a.task||'-'}</div>
-       <div class="task">Last: ${a.last_execution||'-'} · Time: ${a.execution_time||0}s · Conf: ${a.confidence ?? '-'}</div>
-       ${a.error ? `<div class="task" style="color:var(--red)">Error: ${a.error}</div>` : ''}</div>
-       <div class="meta">${a.status||'IDLE'}</div></div>`).join('');
-  } catch (e) { console.warn(e); }
+    const agents = await api("/agents");
+    renderDashAgents(agents);
+  } catch (e) {}
+  try {
+    const preds = await api("/predictions?limit=6");
+    const tb = $("dashPreds");
+    if (!preds.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">No predictions yet</td></tr>'; }
+    else tb.innerHTML = preds.map(p => '<tr><td class="mono">' + esc(p.match_id) + '</td><td>' + decisionBadge(p.decision) + '</td><td class="mono">' + fmt(p.odds) + '</td><td class="mono">' + (p.confidence_score ?? "—") + '</td></tr>').join("");
+  } catch (e) {}
+  try {
+    const logs = await api("/logs?limit=6");
+    const tb = $("dashLogs");
+    if (!logs.length) { tb.innerHTML = '<tr><td colspan="6" class="empty">No activity yet</td></tr>'; }
+    else tb.innerHTML = logs.map(l => '<tr><td class="mono" style="white-space:nowrap">' + esc((l.timestamp || "").slice(11, 19)) + '</td><td class="mono">' + esc(l.service) + '</td><td>' + esc(l.agent || "—") + '</td><td>' + esc(l.action) + '</td><td>' + statusBadge(l.status) + '</td><td class="mono">' + (l.latency != null ? l.latency.toFixed(2) + "s" : "—") + '</td></tr>').join("");
+  } catch (e) {}
+}
+function renderDashAgents(agents) {
+  const rows = AGENT_ORDER.map(name => {
+    const a = agents[name] || {};
+    const m = AGENTS[name] || { name: name };
+    return '<div class="step-row"><span class="status-dot ' + statusDotClass(a.status) + '" style="width:10px;height:10px"></span>' +
+      '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">' + esc(m.name) + '</div>' +
+      '<div style="font-size:11.5px;color:var(--text-3)">' + esc(a.task || "Waiting") + '</div></div>' +
+      statusBadge(a.status) + '</div>';
+  }).join("");
+  $("dashAgents").innerHTML = rows || '<div class="empty">No agents</div>';
 }
 
+/* ---------- Agents page: tab per agent ---------- */
+let activeAgent = "data_scout";
+function loadAgents() {
+  const tabs = document.getElementById("agentTabs");
+  const panels = document.getElementById("agentPanels");
+  tabs.innerHTML = AGENT_ORDER.map(name => {
+    const m = AGENTS[name];
+    return '<button class="agent-tab' + (name === activeAgent ? " active" : "") + '" data-agent="' + name + '" role="tab">' +
+      '<span class="dot" id="dot-' + name + '"></span>' + esc(m.name) + '</button>';
+  }).join("");
+  panels.innerHTML = AGENT_ORDER.map(name => {
+    const m = AGENTS[name];
+    return '<div class="agent-panel' + (name === activeAgent ? " active" : "") + '" id="panel-' + name + '" role="tabpanel">' +
+      '<div class="agent-desc">' +
+        '<h4>' + esc(m.name) + '</h4>' +
+        '<p>' + esc(m.role) + '</p>' +
+        '<div class="key-status" style="gap:8px">' + m.tools.map(t => '<span class="tool-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>' + esc(t) + '</span>').join("") + '</div>' +
+        '<div class="task-list">' + m.steps.map(s => '<div class="task-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>' + esc(s) + '</div>').join("") + '</div>' +
+      '</div>' +
+      '<div class="agent-stats" id="stats-' + name + '"><div class="empty">Menunggu data runtime…</div></div>' +
+    '</div>';
+  }).join("");
+  tabs.querySelectorAll(".agent-tab").forEach(t => t.addEventListener("click", () => {
+    activeAgent = t.dataset.agent;
+    tabs.querySelectorAll(".agent-tab").forEach(x => x.classList.toggle("active", x === t));
+    panels.querySelectorAll(".agent-panel").forEach(p => p.classList.toggle("active", p.id === "panel-" + activeAgent));
+  }));
+  refreshAgentsRuntime();
+}
+async function refreshAgentsRuntime() {
+  try {
+    const agents = await api("/agents");
+    AGENT_ORDER.forEach(name => {
+      const a = agents[name] || {};
+      const dot = document.getElementById("dot-" + name);
+      if (dot) dot.className = "dot " + statusDotClass(a.status);
+      const box = document.getElementById("stats-" + name);
+      if (!box) return;
+      const rows = [
+        ["Status", statusBadge(a.status)],
+        ["Task berjalan", esc(a.task || "Waiting")],
+        ["Terakhir eksekusi", a.last_execution ? esc(String(a.last_execution).slice(0, 19).replace("T", " ")) : "—"],
+        ["Durasi", a.execution_time != null ? a.execution_time.toFixed(2) + " s" : "—"],
+        ["Confidence", a.confidence != null ? a.confidence + " / 100" : "—"],
+        ["Error", a.error ? '<span style="color:var(--red)">' + esc(a.error) + '</span>' : "—"],
+      ];
+      const out = a.output;
+      box.innerHTML = rows.map(r => '<div class="stat-row"><span class="k">' + r[0] + '</span><span class="v">' + r[1] + '</span></div>').join("") +
+        (out ? '<div class="output-box">' + esc(JSON.stringify(out, null, 2).slice(0, 1200)) + '</div>' : "");
+    });
+  } catch (e) {}
+}
+setInterval(() => { if (currentPage === "agents") refreshAgentsRuntime(); }, 5000);
+
+/* ---------- Matches / Odds / Predictions / Bankroll ---------- */
 async function loadMatches() {
   try {
-    const ms = await api('/matches?limit=50');
-    const body = document.getElementById('matches-body');
-    document.getElementById('matches-empty').style.display = ms.length ? 'none' : 'block';
-    body.innerHTML = ms.map(m =>
-      `<tr><td>${m.match_id.slice(0,10)}…</td><td>${m.home_team}</td><td>${m.away_team}</td><td>${m.kickoff||'-'}</td><td>${m.league}</td><td>${m.status}</td></tr>`).join('');
-  } catch (e) { console.warn(e); }
+    const rows = await api("/matches?limit=200");
+    const tb = $("matchesBody");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="4" class="empty">No matches yet — run a scan first</td></tr>'; return; }
+    tb.innerHTML = rows.map(m => '<tr><td style="font-weight:600">' + esc(m.home_team) + ' <span style="color:var(--text-3)">vs</span> ' + esc(m.away_team) + '</td><td>' + esc(m.league) + '</td><td class="mono">' + esc(m.kickoff ? m.kickoff.slice(0, 16) : "—") + '</td><td>' + statusBadge(m.status) + '</td></tr>').join("");
+  } catch (e) { toast("Gagal load matches: " + e.message, false); }
 }
-
 async function loadPredictions() {
   try {
-    const ps = await api('/predictions?limit=50');
-    const body = document.getElementById('predictions-body');
-    document.getElementById('predictions-empty').style.display = ps.length ? 'none' : 'block';
-    body.innerHTML = ps.map(p =>
-      `<tr><td>${p.match_id.slice(0,10)}…</td>
-       <td><span class="tag ${p.decision === 'BET' ? 'bet' : 'nobet'}">${p.decision}</span></td>
-       <td>${p.market||'-'}</td><td>${p.selection||'-'}</td>
-       <td>${p.odds||'-'}</td><td>${pct(p.model_probability)}</td>
-       <td>${pct(p.edge)}</td><td>${fmt(p.ev)}</td>
-       <td>${p.confidence_score}</td><td>${p.risk_level}</td></tr>`).join('');
-  } catch (e) { console.warn(e); }
+    const rows = await api("/predictions?limit=200");
+    const tb = $("predsBody");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="9" class="empty">No predictions yet</td></tr>'; return; }
+    tb.innerHTML = rows.map(p => '<tr><td class="mono">' + esc(p.match_id) + '</td><td>' + decisionBadge(p.decision) + '</td><td>' + esc(p.selection || "—") + '</td><td class="mono">' + fmt(p.odds) + '</td><td class="mono">' + fmtPct(p.model_probability) + '</td><td class="mono ' + (p.edge >= 0 ? "pos" : "neg") + '">' + fmtPct(p.edge) + '</td><td class="mono ' + (p.ev >= 0 ? "pos" : "neg") + '">' + fmtPct(p.ev) + '</td><td class="mono">' + (p.confidence_score ?? "—") + '</td><td>' + riskBadge(p.risk_level) + '</td></tr>').join("");
+  } catch (e) { toast("Gagal load predictions: " + e.message, false); }
 }
-
 async function loadOdds() {
   try {
-    const os = await api('/odds?limit=100');
-    const body = document.getElementById('odds-body');
-    document.getElementById('odds-empty').style.display = os.length ? 'none' : 'block';
-    body.innerHTML = os.map(o =>
-      `<tr><td>${o.timestamp||'-'}</td><td>${o.match_id.slice(0,10)}…</td><td>${o.bookmaker}</td><td>${o.market}</td><td>${o.selection}</td><td>${o.line||'-'}</td><td>${o.odds}</td></tr>`).join('');
-  } catch (e) { console.warn(e); }
+    const rows = await api("/odds?limit=300");
+    const tb = $("oddsBody");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="7" class="empty">No odds stored yet</td></tr>'; return; }
+    tb.innerHTML = rows.map(o => '<tr><td class="mono">' + esc(o.match_id) + '</td><td>' + esc(o.bookmaker) + '</td><td class="mono">' + esc(o.market) + '</td><td>' + esc(o.selection) + '</td><td class="mono">' + (o.line != null ? o.line : "—") + '</td><td class="mono" style="color:var(--accent);font-weight:600">' + fmt(o.odds) + '</td><td class="mono">' + esc(o.timestamp ? o.timestamp.slice(0, 16) : "—") + '</td></tr>').join("");
+  } catch (e) { toast("Gagal load odds: " + e.message, false); }
 }
-
-async function loadPerformance() {
-  try {
-    const p = await api('/performance');
-    document.getElementById('p-bets').textContent = p.total_bets;
-    document.getElementById('p-wins').textContent = p.wins;
-    document.getElementById('p-losses').textContent = p.losses;
-    document.getElementById('p-winrate').textContent = pct(p.win_rate);
-    drawMarketChart(p.by_market || {});
-    drawConfChart(p.by_confidence || {});
-  } catch (e) { console.warn(e); }
-}
-
-function drawMarketChart(byMarket) {
-  const labels = Object.keys(byMarket), vals = Object.values(byMarket).map(v => v.profit || 0);
-  if (charts.market) charts.market.destroy();
-  const ctx = document.getElementById('chart-market');
-  charts.market = new Chart(ctx, { type: 'bar', data: { labels, datasets: [{ label: 'Profit', data: vals, backgroundColor: vals.map(v => v>=0?'#22c55e':'#ef4444') }] },
-    options: { plugins: { legend: { labels: { color: '#8a94a8' } } }, scales: { x: { ticks: { color: '#8a94a8' } }, y: { ticks: { color: '#8a94a8' } } } } });
-}
-
-function drawConfChart(byConf) {
-  const labels = Object.keys(byConf), vals = Object.values(byConf).map(v => v.predictions || 0);
-  if (charts.conf) charts.conf.destroy();
-  const ctx = document.getElementById('chart-conf');
-  charts.conf = new Chart(ctx, { type: 'doughnut', data: { labels, datasets: [{ data: vals, backgroundColor: ['#22c55e','#3b82f6','#eab308','#ef4444'] }] },
-    options: { plugins: { legend: { labels: { color: '#8a94a8' } } } } });
-}
-
 async function loadBankroll() {
   try {
-    const [b, bets] = await Promise.all([api('/bankroll'), api('/bets?limit=20')]);
-    document.getElementById('bankroll-stats').innerHTML =
-      `<div class="card stat"><div class="value">$${fmt(b.current_balance)}</div><div class="label">Balance</div></div>
-       <div class="card stat"><div class="value">$${fmt(b.total_staked)}</div><div class="label">Total Staked</div></div>
-       <div class="card stat"><div class="value">$${fmt(b.total_profit)}</div><div class="label">Total P/L</div></div>
-       <div class="card stat"><div class="value">${pct(b.roi)}</div><div class="label">ROI</div></div>`;
-    document.getElementById('bankroll-body').innerHTML = bets.map(x =>
-      `<tr><td>${x.bet_id.slice(0,8)}</td><td>${x.market||'-'}</td><td>${x.selection||'-'}</td><td>${x.odds||'-'}</td><td>$${fmt(x.stake)}</td><td>${x.status}</td><td>${x.result||'-'}</td></tr>`).join('');
-  } catch (e) { console.warn(e); }
+    const [bank, bets] = await Promise.all([api("/bankroll"), api("/bets?limit=100")]);
+    $("brBalance").textContent = fmtMoney(bank.current_balance);
+    $("brStaked").textContent = fmtMoney(bank.total_staked);
+    $("brWon").textContent = fmtMoney(bank.total_won);
+    $("brRoi").textContent = fmtPct(bank.roi);
+    $("brRoi").className = "kpi-value " + (bank.roi >= 0 ? "pos" : "neg");
+    const tb = $("betsBody");
+    if (!bets.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">No bets placed yet</td></tr>'; return; }
+    tb.innerHTML = bets.map(b => '<tr><td class="mono">' + esc(b.match_id) + '</td><td>' + esc(b.market) + '</td><td class="mono">' + fmt(b.odds) + '</td><td class="mono">' + fmtMoney(b.stake) + '</td><td>' + statusBadge(b.status) + '</td><td>' + decisionBadge(b.result) + '</td><td class="mono ' + ((b.profit_loss ?? 0) >= 0 ? "pos" : "neg") + '">' + fmtMoney(b.profit_loss) + '</td><td class="mono">' + esc((b.timestamp || "").slice(0, 16)) + '</td></tr>').join("");
+  } catch (e) { toast("Gagal load bankroll: " + e.message, false); }
 }
 
-async function loadLogs() {
+/* ---------- Performance ---------- */
+let perfChart = null;
+async function loadPerformance() {
   try {
-    const logs = await api('/logs?limit=30');
-    document.getElementById('logs-content').innerHTML = logs.map(l =>
-      `<div class="log">[${l.timestamp||''}] ${l.service}${l.agent?'/'+l.agent:''} — ${l.action} <span class="${l.status==='success'?'ok':'err'}">${l.status}</span>${l.latency?` (${l.latency}s)`:''}${l.error_details?' '+l.error_details:''}</div>`).join('') || '<div class="log">No logs yet.</div>';
-  } catch (e) { console.warn(e); }
+    const p = await api("/performance");
+    $("perfBets").textContent = p.total_bets;
+    $("perfWr").textContent = fmtPct(p.win_rate);
+    $("perfPnL").textContent = fmtMoney(p.profit_loss);
+    $("perfPnL").className = "kpi-value " + (p.profit_loss >= 0 ? "pos" : "neg");
+    $("perfOdds").textContent = p.average_odds ? fmt(p.average_odds) : "—";
+    const tb = $("perfMarket");
+    const markets = Object.entries(p.by_market || {});
+    if (!markets.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">No data</td></tr>'; }
+    else tb.innerHTML = markets.map(([m, v]) => '<tr><td>' + esc(m) + '</td><td>' + v.bets + '</td><td>' + v.wins + '</td><td class="mono">' + fmtMoney(v.staked) + '</td><td class="mono ' + (v.profit >= 0 ? "pos" : "neg") + '">' + fmtMoney(v.profit) + '</td></tr>').join("");
+    if (window.Chart) {
+      const data = {
+        labels: ["ROI"],
+        datasets: [{ label: "ROI (%)", data: [+(p.roi * 100).toFixed(2)], backgroundColor: p.roi >= 0 ? "rgba(16,185,129,.6)" : "rgba(239,68,68,.6)", borderColor: p.roi >= 0 ? "#10B981" : "#EF4444", borderWidth: 1, borderRadius: 6 }]
+      };
+      if (perfChart) perfChart.destroy();
+      perfChart = new Chart($("perfChart"), {
+        type: "bar",
+        data: data,
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: "#94A3B8" } } }, scales: { y: { ticks: { color: "#64748B" }, grid: { color: "rgba(51,65,85,.25)" } }, x: { ticks: { color: "#64748B" }, grid: { display: false } } } }
+      });
+    }
+  } catch (e) { toast("Gagal load performance: " + e.message, false); }
 }
 
-async function runScan() {
-  const out = document.getElementById('scan-output');
-  out.textContent = 'Scanning...';
+/* ---------- Backtest ---------- */
+$("btnBacktest").addEventListener("click", async () => {
+  const btn = $("btnBacktest");
+  btn.disabled = true;
+  $("backtestLoading").style.display = "block";
+  $("backtestResult").style.display = "none";
   try {
-    const r = await api('/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
-    out.textContent = JSON.stringify(r, null, 2);
-  } catch (e) { out.textContent = 'Scan failed: ' + e.message; }
-}
+    const matches = [];
+    for (let i = 0; i < 30; i++) {
+      matches.push({
+        match_id: "demo-" + i, home_team: "Home " + i, away_team: "Away " + i,
+        league: "Demo", market_odds: { odds: 1.91 }, home_lambda: 1.5, away_lambda: 1.2,
+        model_probability: +(0.5 + (i % 5) * 0.02).toFixed(3),
+        actual_home_goals: i % 2 === 0 ? 2 : 0, actual_away_goals: i % 2 === 0 ? 0 : 1,
+      });
+    }
+    const b = await api("/backtest", { method: "POST", body: JSON.stringify({ matches }) });
+    $("btBets").textContent = b.total_bets;
+    $("btWr").textContent = fmtPct(b.win_rate);
+    $("btRoi").textContent = fmtPct(b.roi);
+    $("btRoi").className = "kpi-value " + (b.roi >= 0 ? "pos" : "neg");
+    $("btDd").textContent = fmtPct(b.max_drawdown / 100);
+    $("btCalib").textContent = b.calibration_error != null ? b.calibration_error.toFixed(4) : "—";
+    $("btAvgOdds").textContent = b.average_odds != null ? fmt(b.average_odds) : "—";
+    $("btAvgEv").textContent = b.average_ev != null ? fmt(b.average_ev) : "—";
+    const grade = b.roi >= 0.05 ? "PROFITABLE" : b.roi >= 0 ? "BREAK EVEN" : "UNPROFITABLE";
+    $("btGrade").textContent = grade;
+    $("btGrade").className = "badge " + (b.roi >= 0.05 ? "b-green" : b.roi >= 0 ? "b-amber" : "b-red");
+    const metrics = [
+      ["Total bets", b.total_bets], ["Wins", b.wins], ["Losses", b.losses], ["Pushes", b.push_count],
+      ["Win rate", fmtPct(b.win_rate)], ["ROI", fmtPct(b.roi)],
+      ["Profit / loss", fmtMoney(b.profit_loss)], ["Total staked", fmtMoney(b.total_staked)],
+      ["Max drawdown", fmtPct(b.max_drawdown / 100)], ["Calibration error", b.calibration_error != null ? b.calibration_error.toFixed(4) : "—"],
+      ["Average odds", b.average_odds != null ? fmt(b.average_odds) : "—"], ["Average EV", b.average_ev != null ? fmt(b.average_ev) : "—"],
+      ["By market", Object.entries(b.by_market || {}).map(([m, v]) => m + " (" + v + ")").join(", ") || "—"],
+      ["By confidence", Object.entries(b.by_confidence || {}).map(([m, v]) => m + " (" + v + ")").join(", ") || "—"],
+    ];
+    $("btRows").innerHTML = metrics.map(([k, v]) => '<tr><td>' + esc(k) + '</td><td class="mono">' + esc(String(v)) + '</td></tr>').join("");
+    $("backtestResult").style.display = "block";
+    toast("Backtest selesai: " + b.total_bets + " bets");
+  } catch (e) { toast("Backtest gagal: " + e.message, false); }
+  $("backtestLoading").style.display = "none";
+  btn.disabled = false;
+});
 
-async function runDemoScan() {
-  const out = document.getElementById('scan-output');
-  out.textContent = 'Running demo analysis (no API key needed)...';
+/* ---------- Risk assess ---------- */
+$("btnRiskAssess").addEventListener("click", async () => {
+  const payload = {
+    quant_probability: parseFloat($("rkProb").value),
+    decimal_odds: parseFloat($("rkOdds").value),
+    current_exposure: parseFloat($("rkExposure").value) || 0,
+    bankroll: parseFloat($("rkBank").value) || 1000,
+  };
+  $("btnRiskAssess").disabled = true;
   try {
-    const q = await api('/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ match_id: 'demo-1', model_probability: 0.597, decimal_odds: 1.91 }) });
-    const s = await api('/simulate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ home_lambda: 1.5, away_lambda: 1.2, simulation_count: 20000, random_seed: 42 }) });
-    const r = await api('/risk-assess', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ quant_probability: 0.597, decimal_odds: 1.91 }) });
-    const d = await api('/decide', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
-      quant_result: q, market_result: { best_odds: 1.91, best_bookmaker: 'Demo' },
-      simulation_result: s, risk_result: r,
-      match_data: { home_team: 'Team A', away_team: 'Team B' },
-      bettor_state: { current_exposure: 0, recent_results: [], consecutive_losses: 0, consecutive_wins: 0 }
-    })});
-    out.textContent = JSON.stringify({ quant: q, simulation: s, risk: r, decision: d }, null, 2);
-  } catch (e) { out.textContent = 'Demo scan failed: ' + e.message; }
-}
+    const r = await api("/risk-assess", { method: "POST", body: JSON.stringify(payload) });
+    $("riskResult").style.display = "block";
+    $("riskResult").textContent = JSON.stringify(r, null, 2);
+    const tag = $("riskResultTag");
+    tag.className = "badge " + (r.risk_level === "LOW" ? "b-green" : r.risk_level === "MEDIUM" ? "b-amber" : "b-red");
+    tag.textContent = "RISK " + r.risk_level + (r.veto_decision ? " · VETOED" : "");
+  } catch (e) { toast("Risk assess gagal: " + e.message, false); }
+  $("btnRiskAssess").disabled = false;
+});
 
-async function runDemoBacktest() {
-  const out = document.getElementById('backtest-output');
-  out.textContent = 'Running backtest...';
-  const matches = [];
-  for (let i = 0; i < 50; i++) {
-    const homeWin = Math.random() < 0.5;
-    matches.push({
-      match_id: 'bt-' + i, home_team: 'Home' + i, away_team: 'Away' + i, league: 'Demo League',
-      market_odds: { odds: 1.91 }, home_lambda: 1.5, away_lambda: 1.2,
-      model_probability: 0.5 + Math.random() * 0.1,
-      actual_home_goals: homeWin ? 2 : 0, actual_away_goals: homeWin ? 0 : 1,
-    });
-  }
+/* ---------- Scanner ---------- */
+$("btnScan").addEventListener("click", async () => {
+  const btn = $("btnScan");
+  btn.disabled = true;
+  $("scanBadge").className = "badge b-amber";
+  $("scanBadge").textContent = "SCANNING";
+  $("scanLoading").style.display = "block";
+  $("scanResults").innerHTML = "";
+  $("pipelineSteps").innerHTML = '<div class="empty">Scanning…</div>';
   try {
-    const r = await api('/backtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matches }) });
-    out.textContent = JSON.stringify(r, null, 2);
-  } catch (e) { out.textContent = 'Backtest failed: ' + e.message; }
+    const payload = {
+      sport: $("scSport").value,
+      regions: $("scRegion").value,
+      markets: $("scMarkets").value,
+      odds_format: "decimal",
+    };
+    const res = await api("/scan", { method: "POST", body: JSON.stringify(payload) });
+    const box = $("scanResults");
+    if (!res.matches_scanned) {
+      box.innerHTML = '<div class="router-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>Tidak ada data. Cek halaman <b>Settings</b> untuk API keys, atau The Odds API memang kosong untuk kombinasi sport/region ini. Sistem tidak pernah menciptakan data palsu.</span></div>';
+    } else {
+      const picks = res.picks || [];
+      box.innerHTML = '<div class="router-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg><span>' + res.matches_scanned + ' match discan, ' + picks.length + ' pick BET dihasilkan.</span></div>';
+      picks.forEach(p => {
+        box.insertAdjacentHTML("beforeend", '<div class="scan-result-card"><div class="teams">' + esc(p.home_team) + ' vs ' + esc(p.away_team) + '</div><div class="key-status" style="margin-top:8px">' + decisionBadge(p.decision) + ' ' + riskBadge(p.risk_level) + ' <span class="badge b-blue">score ' + (p.score ?? "—") + '</span></div><div class="mono" style="font-size:12px;margin-top:6px;color:var(--text-2)">odds ' + fmt(p.odds) + ' · edge ' + fmtPct(p.edge) + ' · EV ' + fmtPct(p.ev) + '</div></div>');
+      });
+    }
+    renderPipelineSteps(res.agents || {});
+    toast("Scan selesai: " + res.matches_scanned + " match");
+  } catch (e) { toast("Scan gagal: " + e.message, false); }
+  $("scanLoading").style.display = "none";
+  $("scanBadge").className = "badge b-blue";
+  $("scanBadge").textContent = "IDLE";
+  btn.disabled = false;
+  refreshAgentsRuntime();
+});
+function renderPipelineSteps(agents) {
+  const box = $("pipelineSteps");
+  const order = ["data_scout", "quant_analyst", "market_analyst", "simulation_analyst", "risk_manager", "bettor_brain"];
+  box.innerHTML = order.map((name, i) => {
+    const a = agents[name] || {};
+    const m = AGENTS[name] || {};
+    return '<div class="step-row"><span class="step-num">' + (i + 1) + '</span>' +
+      '<div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">' + esc(m.name || name) + '</div>' +
+      '<div style="font-size:11.5px;color:var(--text-3)">' + esc(a.task || "Waiting") + '</div></div>' +
+      statusBadge(a.status) + '</div>';
+  }).join("");
 }
 
-function clock() {
-  const d = new Date();
-  document.getElementById('clock').textContent = d.toLocaleString('en-GB', { timeZone: 'Asia/Jakarta', hour12: false }) + ' WIB';
+/* ---------- Settings ---------- */
+let keyInputCount = 0;
+function keyRowHTML(idx, placeholder, statusInfo) {
+  const info = statusInfo ? '<span class="badge b-blue">' + esc(statusInfo.label) + '</span>' : '';
+  return '<div class="api-key-row" id="keyrow-' + idx + '">' +
+    '<span class="key-index">' + String.fromCharCode(65 + idx) + '</span>' +
+    '<input type="password" class="key-input" id="keyin-' + idx + '" placeholder="' + esc(placeholder) + '" autocomplete="off" aria-label="Odds API key ' + String.fromCharCode(65 + idx) + '">' +
+    info +
+    '<div style="display:flex;gap:8px">' +
+    '<button class="btn btn-sm" data-test-key="' + idx + '">Test</button>' +
+    '<button class="btn btn-sm btn-danger" data-rm="' + idx + '">Remove</button>' +
+    '</div>' +
+  '</div>';
 }
-
-document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
-  document.querySelectorAll('nav button').forEach(x => x.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
-  b.classList.add('active');
-  document.getElementById('page-' + b.dataset.page).classList.add('active');
-}));
-
-document.getElementById('btn-scan').addEventListener('click', runScan);
-document.getElementById('btn-scan-demo').addEventListener('click', runDemoScan);
-document.getElementById('btn-backtest-demo').addEventListener('click', runDemoBacktest);
-
-async function refreshAll() {
-  await loadHealth();
-  await loadDashboard();
-  await loadAgentsFull();
-  await loadMatches();
-  await loadPredictions();
-  await loadOdds();
-  await loadPerformance();
-  await loadBankroll();
-  await loadLogs();
+async function loadSettings() {
+  try {
+    const s = await api("/settings");
+    // Odds API keys
+    const count = Math.max(s.THE_ODDS_API_KEYS_COUNT || 0, 1);
+    const routerMap = {};
+    (s.odds_router || []).forEach(k => { routerMap[k.full_key] = k; });
+    keyInputCount = count;
+    const rows = [];
+    for (let i = 0; i < count; i++) {
+      const existing = (s.THE_ODDS_API_KEYS || [])[i];
+      const placeholder = existing && existing.is_set ? existing.label : "Key " + String.fromCharCode(65 + i) + " (kosong jika tidak dipakai)";
+      const st = (s.odds_router || [])[i] || null;
+      rows.push(keyRowHTML(i, placeholder, st));
+    }
+    $("keyRows").innerHTML = rows.join("");
+    $("keyRows").querySelectorAll("[data-rm]").forEach(b => b.addEventListener("click", () => {
+      const row = document.getElementById("keyrow-" + b.dataset.rm);
+      if (row) { row.querySelector(".key-input").value = ""; row.style.opacity = ".35"; }
+    }));
+    // Router status block
+    if (s.odds_router && s.odds_router.length) {
+      $("routerStatus").innerHTML = '<div style="font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-3);margin-bottom:8px">Router Status (live)</div>' +
+        '<div class="table-wrap"><table><thead><tr><th>Key</th><th>Status</th><th>Requests</th><th>Failures</th><th>Cooldown</th><th>Remaining</th><th>Last Error</th></tr></thead><tbody>' +
+        s.odds_router.map(k => '<tr><td class="mono">' + esc(k.full_key) + '</td><td>' + statusBadge(k.status) + '</td><td class="mono">' + k.requests + '</td><td class="mono">' + k.failures + '</td><td class="mono">' + (k.cooldown_remaining_seconds > 0 ? k.cooldown_remaining_seconds.toFixed(0) + "s" : "—") + '</td><td class="mono">' + (k.remaining_requests ?? "—") + '</td><td class="mono">' + esc(k.last_error || "—") + '</td></tr>').join("") + '</tbody></table></div>';
+    } else {
+      $("routerStatus").innerHTML = '<div class="router-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>Belum ada key. Masukkan minimal satu The Odds API key lalu Save.</span></div>';
+    }
+    // OpenRouter / Telegram / strategy
+    $("orKey").placeholder = s.OPENROUTER_API_KEY ? s.OPENROUTER_API_KEY + " (tersimpan)" : "sk-or-v1-...";
+    $("orKey").value = "";
+    $("orModel").value = s.OPENROUTER_MODEL || "openrouter/auto";
+    $("orKeyStatus").textContent = s.OPENROUTER_API_KEY_SET ? "· tersimpan: " + s.OPENROUTER_API_KEY : "";
+    $("tgToken").placeholder = s.TELEGRAM_BOT_TOKEN ? s.TELEGRAM_BOT_TOKEN + " (tersimpan)" : "123456:ABC-DEF...";
+    $("tgToken").value = "";
+    $("tgChat").value = s.TELEGRAM_CHAT_ID && !s.TELEGRAM_CHAT_ID.includes("...") ? s.TELEGRAM_CHAT_ID : "";
+    $("tgTokenStatus").textContent = s.TELEGRAM_BOT_TOKEN_SET ? "· tersimpan" : "";
+    $("tgChatStatus").textContent = s.TELEGRAM_CHAT_ID_SET ? "· tersimpan" : "";
+    $("sMinOdds").value = s.MIN_ODDS;
+    $("sMinEdge").value = s.MIN_EDGE;
+    $("sMinEv").value = s.MIN_EV;
+    $("sMinConf").value = s.MIN_CONFIDENCE;
+    $("sSims").value = s.MONTE_CARLO_SIMULATIONS;
+    $("sSeed").value = s.RANDOM_SEED;
+    $("sTz").value = s.TIMEZONE || "Asia/Jakarta";
+    $("sMode").value = s.BETTING_MODE || "PAPER";
+  } catch (e) { toast("Gagal load settings: " + e.message, false); }
 }
-refreshAll();
-setInterval(refreshAll, 15000);
-setInterval(clock, 1000);
-clock();
+$("btnAddKey").addEventListener("click", () => {
+  keyInputCount = Math.min(keyInputCount + 1, 6);
+  const idx = keyInputCount - 1;
+  $("keyRows").insertAdjacentHTML("beforeend", keyRowHTML(idx, "Key " + String.fromCharCode(65 + idx) + " (baru)"));
+  $("keyRows").querySelector('[data-rm="' + idx + '"]').addEventListener("click", () => {
+    const row = document.getElementById("keyrow-" + idx);
+    if (row) { row.querySelector(".key-input").value = ""; row.style.opacity = ".35"; }
+  });
+});
+$("btnSaveSettings").addEventListener("click", async () => {
+  const keys = [];
+  document.querySelectorAll(".key-input").forEach(inp => { const v = inp.value.trim(); if (v) keys.push(v); });
+  const payload = { THE_ODDS_API_KEYS: keys };
+  if ($("orKey").value.trim()) payload.OPENROUTER_API_KEY = $("orKey").value.trim();
+  if ($("orModel").value.trim()) payload.OPENROUTER_MODEL = $("orModel").value.trim();
+  if ($("tgToken").value.trim()) payload.TELEGRAM_BOT_TOKEN = $("tgToken").value.trim();
+  if ($("tgChat").value.trim()) payload.TELEGRAM_CHAT_ID = $("tgChat").value.trim();
+  payload.MIN_ODDS = parseFloat($("sMinOdds").value);
+  payload.MIN_EDGE = parseFloat($("sMinEdge").value);
+  payload.MIN_EV = parseFloat($("sMinEv").value);
+  payload.MIN_CONFIDENCE = parseInt($("sMinConf").value, 10);
+  payload.MONTE_CARLO_SIMULATIONS = parseInt($("sSims").value, 10);
+  payload.RANDOM_SEED = parseInt($("sSeed").value, 10);
+  payload.TIMEZONE = $("sTz").value;
+  payload.BETTING_MODE = $("sMode").value;
+  $("btnSaveSettings").disabled = true;
+  try {
+    const res = await api("/settings", { method: "PUT", body: JSON.stringify(payload) });
+    toast("Settings tersimpan. " + res.THE_ODDS_API_KEYS_COUNT + " Odds API key aktif.");
+    refreshHealth();
+    loadSettings();
+  } catch (e) { toast("Gagal simpan settings: " + e.message, false); }
+  $("btnSaveSettings").disabled = false;
+});
+$("btnSettingsReset").addEventListener("click", loadSettings);
+function testOddsKey(key) {
+  return api("/settings/test-odds-key", { method: "POST", body: JSON.stringify({ api_key: key }) });
+}
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-test-key]");
+  if (!btn) return;
+  const row = document.getElementById("keyrow-" + btn.dataset.testKey);
+  const inp = row ? row.querySelector(".key-input") : null;
+  const key = (inp ? inp.value : "").trim();
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin" style="display:inline-block">&#8635;</span>';
+  (key ? Promise.resolve({ api_key: key }) : loadFirstStoredKey()).then(p => testOddsKey(p.api_key))
+    .then(r => toast(r.message, r.success))
+    .catch(err => toast("Test gagal: " + err.message, false))
+    .finally(() => { btn.disabled = false; btn.textContent = "Test"; });
+});
+async function loadFirstStoredKey() {
+  const s = await api("/settings");
+  const k = s.THE_ODDS_API_KEYS || [];
+  if (!k.length) throw new Error("Belum ada key tersimpan");
+  return { api_key: k[0].label.replace("...", "") };
+}
+$("btnTestOR").addEventListener("click", async () => {
+  const btn = $("btnTestOR");
+  btn.disabled = true;
+  const payload = {};
+  if ($("orKey").value.trim()) payload.api_key = $("orKey").value.trim();
+  if ($("orModel").value.trim()) payload.model = $("orModel").value.trim();
+  try {
+    const r = await api("/settings/test-openrouter", { method: "POST", body: JSON.stringify(payload) });
+    toast(r.message, r.success);
+  } catch (e) { toast("Test gagal: " + e.message, false); }
+  btn.disabled = false;
+});
+$("btnRefreshMatches").addEventListener("click", loadMatches);
+$("btnRefreshOdds").addEventListener("click", loadOdds);
+
+/* ---------- Boot ---------- */
+loadAgents();
+refreshDashboard();
 </script>
 </body>
 </html>

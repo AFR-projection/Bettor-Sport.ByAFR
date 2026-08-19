@@ -132,8 +132,13 @@ def _get_scoring() -> PickScoringEngine:
 
 @app.get("/health", response_model=HealthCheck, tags=["System"])
 async def health_check(db: Session = Depends(get_db)) -> HealthCheck:
+    from backend.integrations.odds_router import get_odds_router
+
+    router = get_odds_router()
     services: Dict[str, str] = {}
-    services["the_odds_api"] = "configured" if settings.THE_ODDS_API_KEY else "missing_key"
+    services["the_odds_api"] = (
+        "configured" if router.has_keys else "missing_key"
+    )
     services["openrouter"] = "configured" if settings.OPENROUTER_API_KEY else "missing_key"
     services["telegram"] = "configured" if (settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID) else "missing_key"
 
@@ -509,6 +514,97 @@ async def scoring_thresholds():
         "premium": engine.thresholds.premium_min,
         "labels": ["NO BET", "PASS", "WATCH", "BET CANDIDATE", "PREMIUM CANDIDATE"],
     }
+
+
+# ------------------------------------------------------------------
+# Settings endpoints (API keys, strategy params, multi-key router)
+# ------------------------------------------------------------------
+
+class SettingsPayload(BaseModel):
+    THE_ODDS_API_KEYS: Optional[List[str]] = None
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_MODEL: Optional[str] = None
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+    TELEGRAM_CHAT_ID: Optional[str] = None
+    MIN_ODDS: Optional[float] = None
+    MIN_EDGE: Optional[float] = None
+    MIN_EV: Optional[float] = None
+    MIN_CONFIDENCE: Optional[int] = None
+    TIMEZONE: Optional[str] = None
+    MONTE_CARLO_SIMULATIONS: Optional[int] = None
+    RANDOM_SEED: Optional[int] = None
+    BETTING_MODE: Optional[str] = None
+
+
+class TestOddsKeyRequest(BaseModel):
+    api_key: str
+
+
+class TestOpenRouterRequest(BaseModel):
+    api_key: Optional[str] = None
+    model: Optional[str] = None
+
+
+_settings_service: Optional[Any] = None
+
+
+def _get_settings_service():
+    global _settings_service
+    if _settings_service is None:
+        from backend.services.settings_service import get_settings_service
+        _settings_service = get_settings_service()
+    return _settings_service
+
+
+@app.get("/settings", tags=["Settings"])
+async def get_settings_api():
+    return _get_settings_service().masked_view()
+
+
+@app.put("/settings", tags=["Settings"])
+async def update_settings_api(payload: SettingsPayload):
+    svc = _get_settings_service()
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    return svc.update(updates)
+
+
+@app.get("/settings/odds-api/status", tags=["Settings"])
+async def odds_api_router_status():
+    svc = _get_settings_service()
+    from backend.integrations.odds_router import mask_key
+    return {
+        "keys": [
+            {**entry, "full_key": mask_key(entry["full_key"])}
+            for entry in svc.router.status()
+        ],
+        "has_keys": svc.router.has_keys,
+        "active_key": svc.router.active_key_label(),
+    }
+
+
+@app.post("/settings/test-odds-key", tags=["Settings"])
+async def test_odds_key(request: TestOddsKeyRequest):
+    from backend.agents.data_scout import test_odds_api_key
+    return test_odds_api_key(request.api_key)
+
+
+@app.post("/settings/test-openrouter", tags=["Settings"])
+async def test_openrouter(request: TestOpenRouterRequest):
+    from backend.integrations.openrouter import OpenRouterClient
+
+    key = request.api_key or _get_settings_service().get("OPENROUTER_API_KEY", "")
+    model = request.model or _get_settings_service().get("OPENROUTER_MODEL", "openrouter/auto")
+    if not key:
+        return {"success": False, "message": "OpenRouter API key is empty"}
+    try:
+        client = OpenRouterClient(api_key=key, model=model, timeout=20, max_retries=1)
+        reply = client.complete(
+            system_prompt="Reply with exactly: OK",
+            user_prompt="Connection test",
+        )
+        return {"success": True, "message": f"Connected. Model replied: {reply.strip()[:80]}", "model": model}
+    except Exception as e:
+        return {"success": False, "message": str(e), "model": model}
 
 
 # ------------------------------------------------------------------

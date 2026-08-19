@@ -22,6 +22,7 @@ from typing import Any, Dict, List, Optional
 import requests
 
 from backend.config import get_settings
+from backend.integrations.odds_router import OddsApiRouter, get_odds_router
 
 
 THE_ODDS_API_BASE = "https://api.the-odds-api.com/v4"
@@ -59,11 +60,14 @@ class DataScout:
     and validates/normalizes what's received.
     """
     
-    def __init__(self, timeout: int = 30, max_retries: int = 3):
+    def __init__(self, timeout: int = 30, max_retries: int = 3, router: Optional[OddsApiRouter] = None):
         self.timeout = timeout
         self.max_retries = max_retries
         self.settings = get_settings()
         self.api_key = self.settings.THE_ODDS_API_KEY
+        self.router = router or get_odds_router()
+        if self.api_key and not self.router.has_keys:
+            self.router.add_key(self.api_key)
         self.session = requests.Session()
         self.session.headers.update({
             "Accept": "application/json",
@@ -84,19 +88,30 @@ class DataScout:
         """
         results = []
         
-        if not self.api_key:
+        if not self.router.has_keys:
             self._add_warning_all(results, "NO_API_KEY")
             return results
         
         endpoint = f"{THE_ODDS_API_BASE}/sports/{sports}/odds"
-        params = {
-            "regions": regions,
-            "markets": markets,
-            "oddsFormat": odds_format,
-            "apiKey": self.api_key,
-        }
         
-        for attempt in range(self.max_retries):
+        attempts_left = max(self.max_retries, 1)
+        used_keys = set()
+        while attempts_left > 0:
+            api_key = self.router.get_key()
+            if not api_key:
+                self._add_warning_all(results, "ALL_KEYS_UNAVAILABLE")
+                break
+            if api_key in used_keys:
+                time.sleep(1)
+            used_keys.add(api_key)
+            
+            params = {
+                "regions": regions,
+                "markets": markets,
+                "oddsFormat": odds_format,
+                "apiKey": api_key,
+            }
+            
             try:
                 response = self.session.get(
                     endpoint, 
@@ -105,15 +120,28 @@ class DataScout:
                 )
                 
                 if response.status_code == 200:
+                    self.router.report_success(api_key)
                     data = response.json()
                     processed = self._process_odds_data(data)
                     results.extend(processed)
                     break  # Success, no need to retry
                     
                 elif response.status_code == 429:
-                    # Rate limited - wait and retry
-                    wait_time = 2 ** attempt
-                    time.sleep(min(wait_time, 30))
+                    self.router.report_failure(api_key, "RATE_LIMITED", 429)
+                    self._add_warning_all(results, f"RATE_LIMITED_KEY:{api_key[:4]}")
+                    attempts_left -= 1
+                    continue
+                    
+                elif response.status_code in (401, 403):
+                    self.router.report_failure(api_key, f"HTTP {response.status_code}", response.status_code)
+                    self._add_warning_all(results, f"KEY_DISABLED:{api_key[:4]}")
+                    attempts_left -= 1
+                    continue
+                    
+                elif response.status_code >= 500:
+                    self.router.report_failure(api_key, f"HTTP {response.status_code}", response.status_code)
+                    self._add_warning_all(results, f"API_ERROR:{response.status_code}")
+                    attempts_left -= 1
                     continue
                     
                 else:
@@ -121,16 +149,16 @@ class DataScout:
                     break
                     
             except requests.exceptions.Timeout:
-                if attempt < self.max_retries - 1:
-                    time.sleep(2 ** attempt)
-                    continue
+                self.router.report_failure(api_key, "TIMEOUT")
                 self._add_warning_all(results, "API_TIMEOUT")
+                attempts_left -= 1
+                continue
                 
             except requests.exceptions.RequestException as e:
-                if attempt < self.max_retries - 1:
-                    time.sleep(2 ** attempt)
-                    continue
+                self.router.report_failure(api_key, str(e))
                 self._add_warning_all(results, f"REQUEST_ERROR:{str(e)}")
+                attempts_left -= 1
+                continue
         
         return results
     
@@ -279,3 +307,40 @@ class DataScout:
 def get_data_scout(timeout: int = 30, max_retries: int = 3) -> DataScout:
     """Factory function to create DataScout instance."""
     return DataScout(timeout=timeout, max_retries=max_retries)
+
+
+def test_odds_api_key(api_key: str, timeout: int = 15) -> Dict[str, Any]:
+    """Test a single The Odds API key with a real API call.
+
+    Returns dict with success flag, status code, and message.
+    """
+    result: Dict[str, Any] = {"success": False, "status_code": None, "message": "", "sport_count": 0}
+    if not api_key:
+        result["message"] = "API key is empty"
+        return result
+    try:
+        response = requests.get(
+            f"{THE_ODDS_API_BASE}/sports/",
+            params={"apiKey": api_key},
+            timeout=timeout,
+            headers={"Accept": "application/json"},
+        )
+        result["status_code"] = response.status_code
+        if response.status_code == 200:
+            data = response.json()
+            result["success"] = True
+            result["sport_count"] = len(data) if isinstance(data, list) else 0
+            result["message"] = f"Valid key. {result['sport_count']} sports available."
+        elif response.status_code == 429:
+            result["message"] = "Key is rate limited (429). Try again later."
+        elif response.status_code == 401:
+            result["message"] = "Invalid key (401 Unauthorized)."
+        elif response.status_code == 403:
+            result["message"] = "Key forbidden (403). Check access rights."
+        else:
+            result["message"] = f"Unexpected HTTP {response.status_code}."
+    except requests.exceptions.Timeout:
+        result["message"] = "Request timed out. Check internet connection."
+    except requests.exceptions.RequestException as e:
+        result["message"] = f"Network error: {e}"
+    return result

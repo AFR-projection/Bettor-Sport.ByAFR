@@ -18,6 +18,16 @@ def _new_id() -> str:
     return uuid.uuid4().hex[:16]
 
 
+class SystemSetting(Base):
+    """Key-value store for runtime settings (API keys, strategy params)."""
+
+    __tablename__ = "system_settings"
+
+    key = Column(String(100), primary_key=True)
+    value = Column(Text, nullable=False)
+    updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Match(Base):
     __tablename__ = "matches"
 
