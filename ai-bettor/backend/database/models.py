@@ -64,7 +64,7 @@ class Market(Base):
 class OddsSnapshot(Base):
     __tablename__ = "odds_snapshots"
 
-    id = Column(BigInteger, Identity(), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     match_id = Column(String(50), ForeignKey("matches.match_id"), nullable=False)
     bookmaker = Column(String(50), nullable=False)
     market = Column(String(50), nullable=False)
@@ -160,7 +160,7 @@ class Bet(Base):
 class BankrollRecord(Base):
     __tablename__ = "bankroll"
 
-    id = Column(Integer, Identity(), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     current_balance = Column(Float, nullable=False, default=1000.0)
     total_staked = Column(Float, nullable=False, default=0.0)
     total_won = Column(Float, nullable=False, default=0.0)
@@ -172,7 +172,7 @@ class BankrollRecord(Base):
 class SystemLog(Base):
     __tablename__ = "system_logs"
 
-    log_id = Column(BigInteger, Identity(), primary_key=True)
+    log_id = Column(Integer, primary_key=True, autoincrement=True)
     timestamp = Column(DateTime(timezone=True), default=datetime.utcnow)
     service = Column(String(50), nullable=False)
     agent = Column(String(50), nullable=True)

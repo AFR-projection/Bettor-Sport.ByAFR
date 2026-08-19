@@ -39,6 +39,13 @@ DEFAULT_SETTINGS: Dict[str, Any] = {
     "MONTE_CARLO_SIMULATIONS": 20000,
     "RANDOM_SEED": 42,
     "BETTING_MODE": "PAPER",
+    "EARLY_MORNING_ONLY": True,
+    "EARLY_MORNING_END_HOUR": 6,
+    "EARLY_MORNING_DAYS": 2,
+    "TELEGRAM_MIN_SCORE": 85,
+    "TELEGRAM_MAX_PICKS": 5,
+    "SIMULATION_BATCHES": 3,
+    "SCAN_AUTOMATION_ENABLED": True,
 }
 
 
@@ -148,8 +155,15 @@ class SettingsService:
         types = {
             "MIN_ODDS": float, "MIN_EDGE": float, "MIN_EV": float,
             "MIN_CONFIDENCE": int, "MONTE_CARLO_SIMULATIONS": int,
-            "RANDOM_SEED": int,
+            "RANDOM_SEED": int, "EARLY_MORNING_END_HOUR": int,
+            "EARLY_MORNING_DAYS": int, "TELEGRAM_MIN_SCORE": int,
+            "TELEGRAM_MAX_PICKS": int, "SIMULATION_BATCHES": int,
         }
+        bools = {"EARLY_MORNING_ONLY", "SCAN_AUTOMATION_ENABLED"}
+        if key in bools:
+            if isinstance(value, bool):
+                return value
+            return str(value).lower() in ("1", "true", "yes", "on")
         if key in types:
             try:
                 return types[key](value)

@@ -16,6 +16,7 @@ Output is always structured JSON.
 
 from __future__ import annotations
 
+import datetime
 import time
 from typing import Any, Dict, List, Optional
 
@@ -39,6 +40,8 @@ class DataScoutResult:
         self.warnings: List[str] = []
         self.raw_match_data: Optional[Dict] = None
         self.normalized_data: Optional[Dict] = None
+        self.commence_time: Optional[str] = None  # UTC ISO from API
+        self.kickoff_wib: Optional[str] = None    # Local Asia/Jakarta ISO
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -49,6 +52,8 @@ class DataScoutResult:
             "warnings": self.warnings,
             "raw_match_data": self.raw_match_data,
             "normalized_data": self.normalized_data,
+            "commence_time": self.commence_time,
+            "kickoff_wib": self.kickoff_wib,
         }
 
 
@@ -79,18 +84,26 @@ class DataScout:
         regions: str = "idf",
         markets: str = "1X2,HT/FT,OverUnder2.5",
         odds_format: str = "decimal",
+        early_morning_only: Optional[bool] = None,
     ) -> List[DataScoutResult]:
         """
         Scan matches from The Odds API.
         
         Fetches all available matches for the given parameters.
         Returns list of DataScoutResult for each match.
+        
+        early_morning_only: if True, only keep matches kicking off in the
+        early-morning window (local WIB, 00:00 - end_hour) for today and
+        tomorrow. Defaults to settings.EARLY_MORNING_ONLY.
         """
         results = []
         
         if not self.router.has_keys:
             self._add_warning_all(results, "NO_API_KEY")
             return results
+        
+        if early_morning_only is None:
+            early_morning_only = self.settings.EARLY_MORNING_ONLY
         
         endpoint = f"{THE_ODDS_API_BASE}/sports/{sports}/odds"
         
@@ -123,6 +136,8 @@ class DataScout:
                     self.router.report_success(api_key)
                     data = response.json()
                     processed = self._process_odds_data(data)
+                    if early_morning_only:
+                        processed = self._filter_early_morning(processed)
                     results.extend(processed)
                     break  # Success, no need to retry
                     
@@ -183,6 +198,14 @@ class DataScout:
             
             # Store raw data
             result.raw_match_data = match_data
+            
+            # Extract kickoff time (UTC from API -> local WIB)
+            commence_time = match_data.get("commence_time")
+            if commence_time:
+                result.commence_time = commence_time
+                local = self._to_wib(commence_time)
+                if local:
+                    result.kickoff_wib = local.isoformat()
             
             # Extract teams
             teams = match_data.get("teams", [])
@@ -297,11 +320,54 @@ class DataScout:
         # Deduct from quality
         if result.data_quality > 0:
             result.data_quality -= 10
-    
+
     def _add_warning_all(self, results: List[DataScoutResult], warning: str):
         """Add warning to all results (typically for API-level errors)."""
         for result in results:
             result.warnings.append(warning)
+
+    # ------------------------------------------------------------------
+    # Early-morning window filter (dini hari: today + tomorrow, WIB)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _to_wib(commence_time: str) -> Optional[datetime.datetime]:
+        """Parse UTC ISO commence_time and convert to Asia/Jakarta (WIB)."""
+        try:
+            raw = commence_time
+            if raw.endswith("Z"):
+                raw = raw[:-1] + "+00:00"
+            utc = datetime.datetime.fromisoformat(raw)
+            if utc.tzinfo is None:
+                utc = utc.replace(tzinfo=datetime.timezone.utc)
+            wib = utc.astimezone(datetime.timezone(datetime.timedelta(hours=7)))
+            return wib
+        except (ValueError, TypeError):
+            return None
+
+    def _is_early_morning_window(self, commence_time: str) -> bool:
+        """True if kickoff (WIB) is early morning (hour < end_hour) on
+        today or tomorrow (local Jakarta calendar days)."""
+        local = self._to_wib(commence_time)
+        if local is None:
+            return False
+        now_wib = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=7)))
+        day_diff = (local.date() - now_wib.date()).days
+        if day_diff < 0 or day_diff >= max(1, self.settings.EARLY_MORNING_DAYS):
+            return False
+        return local.hour < self.settings.EARLY_MORNING_END_HOUR
+
+    def _filter_early_morning(self, results: List[DataScoutResult]) -> List[DataScoutResult]:
+        """Keep only matches kicking off dini hari (early morning WIB)."""
+        if not self.settings.EARLY_MORNING_ONLY:
+            return results
+        filtered: List[DataScoutResult] = []
+        for result in results:
+            if result.commence_time and self._is_early_morning_window(result.commence_time):
+                filtered.append(result)
+            elif not result.commence_time:
+                result.warnings.append("NO_COMMENCE_TIME_SKIPPED")
+        return filtered
 
 
 def get_data_scout(timeout: int = 30, max_retries: int = 3) -> DataScout:

@@ -100,24 +100,63 @@ class SimulationAnalyst:
                  home_lambda: float,
                  away_lambda: float,
                  simulation_count: Optional[int] = None,
-                 random_seed: Optional[int] = None) -> SimulationAnalystResult:
+                 random_seed: Optional[int] = None,
+                 batches: int = 1) -> SimulationAnalystResult:
         """
         Run Monte Carlo simulation for match outcomes.
-        
-        Returns probability distribution across all markets.
+
+        Runs `batches` independent simulation runs (each with its own seed)
+        and averages the results for higher stability. Returns probability
+        distribution across all markets.
         """
         n = simulation_count or self.simulations
-        
-        if random_seed is not None:
-            np.random.seed(random_seed)
-        
-        # Use the engine to simulate
-        sim_result = self.engine.simulate_match(
-            home_lambda=home_lambda,
-            away_lambda=away_lambda,
-            simulations=n,
-        )
-        
+        batches = max(1, batches)
+        base_seed = random_seed if random_seed is not None else self.random_seed
+
+        if batches <= 1:
+            if base_seed is not None:
+                np.random.seed(base_seed)
+            sim_result = self.engine.simulate_match(
+                home_lambda=home_lambda,
+                away_lambda=away_lambda,
+                simulations=n,
+            )
+        else:
+            # Direct Poisson sampling per batch: each batch gets its own
+            # seed (base_seed + i) so results are reproducible AND varied.
+            agg = {k: 0.0 for k in (
+                "home_win_probability", "draw_probability", "away_win_probability",
+                "over_25_probability", "under_25_probability",
+                "handicap_home_cover_probability", "handicap_away_cover_probability",
+                "variance", "mean_goal_difference",
+            )}
+            for i in range(batches):
+                if base_seed is not None:
+                    np.random.seed(base_seed + i)
+                home_goals = np.random.poisson(home_lambda, n)
+                away_goals = np.random.poisson(away_lambda, n)
+                gd = home_goals - away_goals
+                total = home_goals + away_goals
+                agg["home_win_probability"] += (gd > 0).mean()
+                agg["draw_probability"] += (gd == 0).mean()
+                agg["away_win_probability"] += (gd < 0).mean()
+                agg["over_25_probability"] += (total > 2.5).mean()
+                agg["under_25_probability"] += (total <= 2.5).mean()
+                agg["handicap_home_cover_probability"] += (gd >= 0.5).mean()
+                agg["handicap_away_cover_probability"] += (gd < 0.5).mean()
+                agg["variance"] += float(gd.var())
+                agg["mean_goal_difference"] += float(gd.mean())
+            for k in agg:
+                agg[k] /= batches
+            sim_result = {
+                **agg,
+                "simulation_count": n * batches,
+                "std_dev_goal_difference": math.sqrt(agg["variance"]),
+            }
+            # Engine not used for batches>1, so replicate its stability calc
+            variance = agg["variance"]
+            sim_result["stability"] = float(min(1.0, 5.0 / variance)) if variance > 0 else 1.0
+
         result = SimulationAnalystResult()
         
         # Map simulation results to output structure

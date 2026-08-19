@@ -6,14 +6,14 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.orm import DeclarativeBase
 import logging
-from backend.config.settings import settings
+from backend.config import get_settings
 
 logger = logging.getLogger("db")
 engine = None
 async_session_factory = None
 
 def get_database_url() -> str:
-    return settings.database_url
+    return get_settings().DATABASE_URL
 
 def init_db(url: str | None = None) -> None:
     global engine, async_session_factory

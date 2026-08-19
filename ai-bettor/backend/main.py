@@ -58,6 +58,7 @@ class ScanRequest(BaseModel):
     regions: str = "idf"
     markets: str = "1X2,h2h,spreads,totals"
     odds_format: str = "decimal"
+    early_morning_only: Optional[bool] = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -362,13 +363,9 @@ async def agents_status():
 async def run_scan(request: ScanRequest):
     pipeline = _get_pipeline()
     pipeline.scout.max_retries = 3
-    picks = pipeline.run_scan()
-    return {
-        "status": "completed",
-        "matches_scanned": len(picks) if not picks else len(picks),
-        "picks": picks,
-        "agents": pipeline.agent_status(),
-    }
+    summary = pipeline.run_cycle(early_morning_only=request.early_morning_only)
+    summary["agents"] = pipeline.agent_status()
+    return summary
 
 
 @app.post("/analyze", tags=["Analysis"])
@@ -534,6 +531,14 @@ class SettingsPayload(BaseModel):
     MONTE_CARLO_SIMULATIONS: Optional[int] = None
     RANDOM_SEED: Optional[int] = None
     BETTING_MODE: Optional[str] = None
+    AGENT_SCAN_INTERVAL_SECONDS: Optional[int] = None
+    EARLY_MORNING_ONLY: Optional[bool] = None
+    EARLY_MORNING_END_HOUR: Optional[int] = None
+    EARLY_MORNING_DAYS: Optional[int] = None
+    TELEGRAM_MIN_SCORE: Optional[int] = None
+    TELEGRAM_MAX_PICKS: Optional[int] = None
+    SIMULATION_BATCHES: Optional[int] = None
+    SCAN_AUTOMATION_ENABLED: Optional[bool] = None
 
 
 class TestOddsKeyRequest(BaseModel):
@@ -613,9 +618,52 @@ async def test_openrouter(request: TestOpenRouterRequest):
 
 _start_time = time.time()
 
+_automation_lock = False
+
+
+async def _automation_loop() -> None:
+    """Background scheduler: runs a full scan cycle automatically.
+
+    Only runs when The Odds API keys are configured. Waits
+    AGENT_SCAN_INTERVAL_SECONDS between cycles, skips overlapping runs.
+    """
+    import asyncio
+
+    global _automation_lock
+    logger.info("Automation enabled: scan every %ss", settings.AGENT_SCAN_INTERVAL_SECONDS)
+    while True:
+        try:
+            await asyncio.sleep(settings.AGENT_SCAN_INTERVAL_SECONDS)
+            from backend.integrations.odds_router import get_odds_router
+            if not get_odds_router().has_keys:
+                continue
+            if _automation_lock:
+                logger.info("Previous scan still running, skipping cycle")
+                continue
+            _automation_lock = True
+            try:
+                summary = await asyncio.to_thread(_get_pipeline().run_cycle)
+                logger.info(
+                    "Auto-scan done: %s matches, %s bets, %s telegram",
+                    summary.get("matches_scanned", 0),
+                    summary.get("bet_candidates", 0),
+                    summary.get("telegram_sent", 0),
+                )
+            except Exception as e:
+                logger.error("Auto-scan failed: %s", e)
+            finally:
+                _automation_lock = False
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning("Automation loop error: %s", e)
+            await asyncio.sleep(30)
+
 
 @app.on_event("startup")
 async def startup_event():
+    import asyncio
+
     logger.info("AI Bettor starting up...")
     try:
         init_db()
@@ -623,10 +671,14 @@ async def startup_event():
     except Exception as e:
         logger.warning("Database init failed: %s", e)
     logger.info("Timezone: %s", settings.TIMEZONE)
-    logger.info("Monte Carlo simulations: %s", settings.MONTE_CARLO_SIMULATIONS)
+    logger.info("Monte Carlo simulations: %s (x%s batches)", settings.MONTE_CARLO_SIMULATIONS, settings.SIMULATION_BATCHES)
     logger.info("Random seed: %s", settings.RANDOM_SEED)
     logger.info("Betting mode: %s", settings.BETTING_MODE)
+    logger.info("Early-morning window (dini hari WIB): %s - %s", "00:00", f"{settings.EARLY_MORNING_END_HOUR:02d}:00")
+    logger.info("Telegram min score: %s, max picks: %s", settings.TELEGRAM_MIN_SCORE, settings.TELEGRAM_MAX_PICKS)
     logger.info("AI Bettor ready.")
+    if settings.SCAN_AUTOMATION_ENABLED:
+        asyncio.create_task(_automation_loop())
 
 
 # ------------------------------------------------------------------

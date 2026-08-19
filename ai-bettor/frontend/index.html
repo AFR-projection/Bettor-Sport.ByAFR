@@ -580,6 +580,14 @@ tbody tr:last-child td { border-bottom: none; }
               <div class="field"><label for="sSeed">Random Seed</label><input type="number" id="sSeed"></div>
               <div class="field"><label for="sTz">Timezone</label><select id="sTz"><option value="Asia/Jakarta">Asia/Jakarta (WIB)</option><option value="Asia/Makassar">Asia/Makassar (WITA)</option><option value="Asia/Jayapura">Asia/Jayapura (WIT)</option><option value="UTC">UTC</option><option value="Europe/London">Europe/London</option></select></div>
               <div class="field"><label for="sMode">Betting Mode</label><select id="sMode"><option value="PAPER">PAPER (safe)</option><option value="LIVE">LIVE (real stake)</option></select></div>
+              <div class="field"><label for="sBatches">Simulation Batches (per match)</label><input type="number" id="sBatches" min="1" max="10"></div>
+              <div class="field"><label for="sEarlyOnly">Dini Hari Only</label><select id="sEarlyOnly"><option value="true">Ya — hanya kickoff 00:00–06:00 WIB</option><option value="false">Tidak — semua jam</option></select></div>
+              <div class="field"><label for="sEarlyEnd">Dini Hari Sampai Jam (WIB)</label><input type="number" id="sEarlyEnd" min="0" max="23"></div>
+              <div class="field"><label for="sEarlyDays">Hari ke Depan (0 = hari ini saja)</label><input type="number" id="sEarlyDays" min="0" max="7"></div>
+              <div class="field"><label for="sTgMinScore">Telegram Min Score (0–100)</label><input type="number" id="sTgMinScore" min="0" max="100"></div>
+              <div class="field"><label for="sTgMaxPicks">Telegram Max Picks per Siklus</label><input type="number" id="sTgMaxPicks" min="1" max="10"></div>
+              <div class="field"><label for="sScanInterval">Auto-Scan Interval (detik)</label><input type="number" id="sScanInterval" min="10"></div>
+              <div class="field"><label for="sAuto">Auto-Scan Otomatis</label><select id="sAuto"><option value="true">Aktif</option><option value="false">Mati</option></select></div>
             </div>
           </div>
         </div>
@@ -1108,6 +1116,14 @@ async function loadSettings() {
     $("sSeed").value = s.RANDOM_SEED;
     $("sTz").value = s.TIMEZONE || "Asia/Jakarta";
     $("sMode").value = s.BETTING_MODE || "PAPER";
+    $("sBatches").value = s.SIMULATION_BATCHES;
+    $("sEarlyOnly").value = s.EARLY_MORNING_ONLY ? "true" : "false";
+    $("sEarlyEnd").value = s.EARLY_MORNING_END_HOUR;
+    $("sEarlyDays").value = s.EARLY_MORNING_DAYS;
+    $("sTgMinScore").value = s.TELEGRAM_MIN_SCORE;
+    $("sTgMaxPicks").value = s.TELEGRAM_MAX_PICKS;
+    $("sScanInterval").value = s.AGENT_SCAN_INTERVAL_SECONDS;
+    $("sAuto").value = s.SCAN_AUTOMATION_ENABLED ? "true" : "false";
   } catch (e) { toast("Gagal load settings: " + e.message, false); }
 }
 $("btnAddKey").addEventListener("click", () => {
@@ -1135,6 +1151,14 @@ $("btnSaveSettings").addEventListener("click", async () => {
   payload.RANDOM_SEED = parseInt($("sSeed").value, 10);
   payload.TIMEZONE = $("sTz").value;
   payload.BETTING_MODE = $("sMode").value;
+  payload.SIMULATION_BATCHES = parseInt($("sBatches").value, 10);
+  payload.EARLY_MORNING_ONLY = $("sEarlyOnly").value === "true";
+  payload.EARLY_MORNING_END_HOUR = parseInt($("sEarlyEnd").value, 10);
+  payload.EARLY_MORNING_DAYS = parseInt($("sEarlyDays").value, 10);
+  payload.TELEGRAM_MIN_SCORE = parseInt($("sTgMinScore").value, 10);
+  payload.TELEGRAM_MAX_PICKS = parseInt($("sTgMaxPicks").value, 10);
+  payload.AGENT_SCAN_INTERVAL_SECONDS = parseInt($("sScanInterval").value, 10);
+  payload.SCAN_AUTOMATION_ENABLED = $("sAuto").value === "true";
   $("btnSaveSettings").disabled = true;
   try {
     const res = await api("/settings", { method: "PUT", body: JSON.stringify(payload) });

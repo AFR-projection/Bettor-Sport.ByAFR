@@ -1,14 +1,14 @@
 # """The Odds API client."""
 from __future__ import annotations; import httpx, time, logging, asyncio
 from datetime import datetime, timezone; from typing import Optional
-from backend.config.settings import settings
+from backend.config import get_settings
 
 logger = logging.getLogger("odds_api")
 ODDS_BASE = "https://api.the-odds-api.com/v4"
 
 class OddsAPIClient:
     def __init__(self):
-        self.api_key = settings.the_odds_api_key
+        self.api_key = get_settings().THE_ODDS_API_KEY
         self._c = httpx.AsyncClient(base_url=ODDS_BASE, timeout=30.0, headers={"apikey": self.api_key})
     async def close(self): await self._c.aclose()
 
@@ -16,7 +16,7 @@ class OddsAPIClient:
         r = await self._g("/sports"); return r if isinstance(r,list) else []
 
     async def fetch_events(self, sport: str, regions=None):
-        p = {"regions": regions or settings.odds_api_regions, "markets": settings.odds_api_markets, "dateFormat": "iso", "perPage": 100}
+        p = {"regions": regions or "idf", "markets": "1X2,h2h,spreads,totals", "dateFormat": "iso", "perPage": 100}
         r = await self._g(f"/sports/{sport}/events", p); return r if isinstance(r,list) else []
 
     async def fetch_history(self, sport: str, event_id: str, market: str):

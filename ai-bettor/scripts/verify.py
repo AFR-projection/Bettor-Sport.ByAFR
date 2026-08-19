@@ -11,7 +11,7 @@ def check(name, fn):
         ERRORS.append(name)
         print("[FAIL] " + name + ": " + str(e))
 print("=== IMPORT TESTS ===")
-from backend.config.settings import settings
+from backend.config import get_settings
 print("Settings loaded OK")
 from backend.database.db import init_db, close_engine, get_database_url
 print("Database module OK")

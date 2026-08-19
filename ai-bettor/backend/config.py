@@ -29,6 +29,13 @@ class Settings(NamedTuple):
     MIN_CONFIDENCE: int
     BETTING_MODE: str
     AGENT_SCAN_INTERVAL_SECONDS: int
+    EARLY_MORNING_ONLY: bool
+    EARLY_MORNING_END_HOUR: int
+    EARLY_MORNING_DAYS: int
+    TELEGRAM_MIN_SCORE: int
+    TELEGRAM_MAX_PICKS: int
+    SIMULATION_BATCHES: int
+    SCAN_AUTOMATION_ENABLED: bool
     
     @classmethod
     def from_env(cls) -> "Settings":
@@ -70,6 +77,13 @@ class Settings(NamedTuple):
             MIN_CONFIDENCE=int(os.getenv("MIN_CONFIDENCE", "60")),
             BETTING_MODE=os.getenv("BETTING_MODE", "PAPER"),
             AGENT_SCAN_INTERVAL_SECONDS=int(os.getenv("AGENT_SCAN_INTERVAL_SECONDS", "60")),
+            EARLY_MORNING_ONLY=os.getenv("EARLY_MORNING_ONLY", "true").lower() in ("1", "true", "yes", "on"),
+            EARLY_MORNING_END_HOUR=int(os.getenv("EARLY_MORNING_END_HOUR", "6")),
+            EARLY_MORNING_DAYS=int(os.getenv("EARLY_MORNING_DAYS", "2")),
+            TELEGRAM_MIN_SCORE=int(os.getenv("TELEGRAM_MIN_SCORE", "85")),
+            TELEGRAM_MAX_PICKS=int(os.getenv("TELEGRAM_MAX_PICKS", "5")),
+            SIMULATION_BATCHES=int(os.getenv("SIMULATION_BATCHES", "3")),
+            SCAN_AUTOMATION_ENABLED=os.getenv("SCAN_AUTOMATION_ENABLED", "true").lower() in ("1", "true", "yes", "on"),
         )
         
         return settings

@@ -59,8 +59,10 @@ class TelegramNotifier:
 
     def format_pick_message(self, decision: Dict[str, Any]) -> str:
         """Format a BettorBrain decision into the standard pick message."""
+        score = decision.get("score")
+        header = "PREMIUM PICK" if (score or 0) >= 90 else "HIGH-CONFIDENCE PICK"
         lines = [
-            "\U0001F3C6 AI BETTOR — PREMIUM PICK",
+            f"\U0001F3C6 AI BETTOR — {header}",
             "",
             "\u26BD MATCH",
             f"{decision.get('home_team', 'Home')} vs {decision.get('away_team', 'Away')}",
@@ -90,16 +92,16 @@ class TelegramNotifier:
             f"+{decision.get('ev', 0):.2f}",
             "",
             "\U0001F3B2 SIMULATION",
-            f"{decision.get('simulation_count', 20000):,} runs",
+            f"{decision.get('simulation_count', 20000):,} runs (repeated batches)",
+            "",
+            "\U0001F4AF SCORE",
+            f"{score if score is not None else decision.get('confidence', 0)}/100",
             "",
             "\U0001F6E1\uFE0F RISK",
             f"{decision.get('risk', 'UNKNOWN')}",
             "",
             "\U0001F9E0 CONFIDENCE",
             f"{decision.get('confidence', 0)}/100",
-            "",
-            "\U0001F4CC MINIMUM ACCEPTABLE ODDS",
-            f"{decision.get('minimum_acceptable_odds', 'N/A')}",
             "",
             "DECISION:",
             f"\U0001F7E2 {decision.get('decision', 'NO BET')}",
