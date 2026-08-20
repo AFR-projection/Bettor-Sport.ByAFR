@@ -1,9 +1,14 @@
 """Alembic environment for AI Bettor.
 
-The connection URL comes from the app's own configuration (`DATABASE_URL`, with
-Neon's driver + `sslmode` normalisation already applied), so `alembic upgrade
-head` on the server always targets the same database the app uses — there is no
-second URL in alembic.ini to keep in sync.
+The connection URL comes from the app's own configuration (with Neon's driver +
+`sslmode` normalisation already applied), so `alembic upgrade head` on the
+server always targets the same database the app uses — there is no second URL
+in alembic.ini to keep in sync.
+
+One deliberate difference from the app: DDL prefers Neon's *direct* endpoint
+(`DATABASE_URL_UNPOOLED`) when it is set, because the pooled endpoint is
+PgBouncer in transaction mode and migrations over it break confusingly. See
+`migration_database_url()`.
 
 `target_metadata` is the real model metadata, which is what makes
 `alembic revision --autogenerate` work.
@@ -20,9 +25,10 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.config import get_settings  # noqa: E402
 from backend.database.models import Base  # noqa: E402
-from backend.database.session import normalise_database_url  # noqa: E402
+from backend.database.session import (  # noqa: E402
+    migration_database_url, normalise_database_url,
+)
 
 config = context.config
 
@@ -33,11 +39,11 @@ if config.config_file_name is not None and config.get_section("loggers"):
 
 
 def _database_url() -> str:
-    """CLI override (`-x url=…`) > environment > app settings."""
+    """CLI override (`-x url=…`) > direct/unpooled env > `DATABASE_URL` > settings."""
     override = context.get_x_argument(as_dictionary=True).get("url")
     if override:
         return normalise_database_url(override)
-    return normalise_database_url(os.getenv("DATABASE_URL") or get_settings().DATABASE_URL)
+    return migration_database_url()
 
 
 target_metadata = Base.metadata

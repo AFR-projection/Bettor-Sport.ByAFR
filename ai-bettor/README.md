@@ -73,7 +73,7 @@ port aplikasi di-bind ke `127.0.0.1:8000` supaya hanya bisa diakses lewat Nginx.
 ### 4. Test
 
 ```bash
-python -m pytest -q          # 263 test
+python -m pytest -q          # 274 test
 ```
 
 ## Database: Neon (serverless PostgreSQL)
@@ -114,6 +114,22 @@ ada URL kedua yang bisa ketinggalan:
 alembic upgrade head                          # atau: alembic -x url=... upgrade head
 alembic revision --autogenerate -m "add X"    # untuk perubahan skema berikutnya
 ```
+
+Satu hal khusus Neon: **migrasi memakai koneksi direct, bukan pooled.** Endpoint
+pooled (`-pooler`) itu PgBouncer transaction mode — session state tidak bertahan
+antar statement, jadi migrasi bisa gagal dengan pesan yang sama sekali tidak
+menyebut pooling (`prepared statement "s0" already exists`, `SET search_path`
+yang hilang di statement berikutnya, write yang masuk ke transaksi read-only).
+Isi `DATABASE_URL_UNPOOLED` dengan URL yang sama tanpa `-pooler`:
+
+```
+DATABASE_URL=postgresql://…@ep-xxxx-pooler.REGION.aws.neon.tech/ai_bettor?sslmode=require
+DATABASE_URL_UNPOOLED=postgresql://…@ep-xxxx.REGION.aws.neon.tech/ai_bettor?sslmode=require
+```
+
+Aplikasi tetap memakai `DATABASE_URL` (pooled) — hanya alembic yang beralih.
+Kalau `DATABASE_URL_UNPOOLED` dibiarkan kosong, migrasi jalan lewat URL pooled
+dan menulis warning, bukan gagal diam-diam.
 
 ## Deploy ke VPS
 
@@ -252,6 +268,7 @@ ALLOWED_ORIGINS=https://bettor.example.com
 
 # Database (Neon)
 DATABASE_URL=postgresql://USER:PASSWORD@ep-xxxx-pooler.REGION.aws.neon.tech/ai_bettor?sslmode=require
+DATABASE_URL_UNPOOLED=          # opsional, host tanpa -pooler; dipakai alembic
 ALLOW_SQLITE_FALLBACK=false
 
 # Integrasi
@@ -300,7 +317,7 @@ backend/
 ├── services/        # pipeline, scoring, backtest, paper betting, settings
 ├── database/        # SQLAlchemy models + session (Neon/SQLite)
 ├── security.py      # token guard + CORS helper
-└── tests/           # 263 automated tests
+└── tests/           # 274 automated tests
 frontend/            # dashboard satu file (dark theme, di-serve FastAPI)
 alembic/             # migrasi (opsional; init_db() sudah menangani skema)
 deploy/              # nginx.conf, systemd unit, env.production.example

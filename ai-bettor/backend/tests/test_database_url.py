@@ -8,6 +8,8 @@ pinned here rather than discovered during a deploy:
   (SQLAlchemy 2 refuses the bare `postgres://` scheme outright).
 * a remote host gets `sslmode=require` appended; localhost does not.
 * the password never appears in anything the app reports.
+* DDL prefers the direct endpoint: Neon's pooled host is PgBouncer in
+  transaction mode, and migrations over it fail without naming pooling.
 """
 
 from __future__ import annotations
@@ -20,10 +22,11 @@ import pytest
 
 from backend.database.session import (
     SQLITE_FALLBACK_URL, database_info, describe_database_url, engine,
-    normalise_database_url,
+    is_pooled_url, migration_database_url, normalise_database_url,
 )
 
 NEON = "postgresql://bettor:pw123@ep-cool-fog-12345-pooler.eu-central-1.aws.neon.tech/ai_bettor"
+NEON_DIRECT = NEON.replace("-pooler", "")
 
 
 class TestDriverNormalisation:
@@ -108,3 +111,59 @@ class TestLiveEngine:
         info = database_info()
         assert info["dialect"] == "sqlite"
         assert "password" not in str(info).lower()
+
+
+class TestPooledDetection:
+    def test_a_pooler_host_is_recognised(self):
+        assert is_pooled_url(NEON) is True
+
+    def test_the_direct_endpoint_is_not(self):
+        assert is_pooled_url(NEON_DIRECT) is False
+
+    def test_sqlite_is_not_pooled(self):
+        assert is_pooled_url(SQLITE_FALLBACK_URL) is False
+
+
+class TestMigrationUrl:
+    """Neon publishes two URLs; alembic must take the direct one when it exists."""
+
+    def test_the_unpooled_url_wins_over_database_url(self):
+        url = migration_database_url(
+            {"DATABASE_URL": NEON, "DATABASE_URL_UNPOOLED": NEON_DIRECT})
+        assert "-pooler" not in url
+        assert url.startswith("postgresql+psycopg2://")
+
+    def test_direct_database_url_is_also_accepted(self):
+        assert "-pooler" not in migration_database_url(
+            {"DATABASE_URL": NEON, "DIRECT_DATABASE_URL": NEON_DIRECT})
+
+    def test_the_unpooled_name_takes_precedence(self):
+        """`neon env pull` writes DATABASE_URL_UNPOOLED, so it is the first choice."""
+        assert "ai_bettor" in migration_database_url({
+            "DATABASE_URL_UNPOOLED": NEON_DIRECT,
+            "DIRECT_DATABASE_URL": "postgresql://u:p@other.example.com/other",
+        })
+
+    def test_an_empty_unpooled_value_is_ignored(self):
+        assert "-pooler" in migration_database_url(
+            {"DATABASE_URL": NEON, "DATABASE_URL_UNPOOLED": "   "})
+
+    def test_it_falls_back_to_database_url(self):
+        assert migration_database_url({"DATABASE_URL": NEON_DIRECT}).startswith(
+            "postgresql+psycopg2://")
+
+    def test_a_pooled_fallback_is_used_but_warned_about(self, caplog):
+        """Better a warning than a migration that fails without naming pooling."""
+        with caplog.at_level("WARNING", logger="ai-bettor.database"):
+            url = migration_database_url({"DATABASE_URL": NEON})
+        assert "-pooler" in url
+        assert "DATABASE_URL_UNPOOLED" in caplog.text
+
+    def test_sqlite_needs_no_second_url(self):
+        assert migration_database_url(
+            {"DATABASE_URL": SQLITE_FALLBACK_URL}) == SQLITE_FALLBACK_URL
+
+    def test_the_password_is_not_logged(self, caplog):
+        with caplog.at_level("WARNING", logger="ai-bettor.database"):
+            migration_database_url({"DATABASE_URL": NEON})
+        assert "pw123" not in caplog.text

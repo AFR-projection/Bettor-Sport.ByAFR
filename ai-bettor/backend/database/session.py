@@ -25,8 +25,9 @@ second, empty database that looks like data loss. It now raises unless
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import contextmanager
-from typing import Iterator
+from typing import Iterator, Mapping, Optional
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import create_engine, inspect, text
@@ -42,6 +43,10 @@ SQLITE_FALLBACK_URL = "sqlite:///./ai_bettor_dev.db"
 # Hosts for which TLS is not forced — a local or in-container Postgres usually
 # has no certificate, and requiring one would break `docker compose up`.
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "db", "postgres", ""}
+
+# Where Neon's *direct* (unpooled) endpoint shows up. `neon env pull` writes
+# `DATABASE_URL_UNPOOLED`; `DIRECT_DATABASE_URL` is the name other tooling uses.
+MIGRATION_URL_ENV_VARS = ("DATABASE_URL_UNPOOLED", "DIRECT_DATABASE_URL")
 
 
 def _is_postgres_url(url: str) -> bool:
@@ -77,6 +82,40 @@ def normalise_database_url(url: str) -> str:
         parts = parts._replace(query=urlencode(query))
         url = urlunsplit(parts)
     return url
+
+
+def is_pooled_url(url: str) -> bool:
+    """True for Neon's PgBouncer endpoint — its host carries a `-pooler` suffix."""
+    host = (urlsplit(normalise_database_url(url)).hostname or "").lower()
+    return "-pooler." in host or host.endswith("-pooler")
+
+
+def migration_database_url(env: Optional[Mapping[str, str]] = None) -> str:
+    """The URL that DDL (alembic) should run over.
+
+    Neon's pooled endpoint is PgBouncer in transaction mode: session state does
+    not survive between statements, and migrations run over it fail in ways
+    that never mention pooling — `prepared statement "s0" already exists`, a
+    `SET search_path` that is gone by the next statement, a write landing in an
+    inherited read-only transaction. Neon publishes the direct endpoint next to
+    the pooled one, so use it when it is set and fall back to `DATABASE_URL`
+    (which is correct as-is for SQLite and for a non-pooled Postgres host).
+    """
+    env = os.environ if env is None else env
+    for name in MIGRATION_URL_ENV_VARS:
+        direct = (env.get(name) or "").strip()
+        if direct:
+            return normalise_database_url(direct)
+
+    fallback = normalise_database_url(
+        (env.get("DATABASE_URL") or "").strip() or get_settings().DATABASE_URL)
+    if is_pooled_url(fallback):
+        logger.warning(
+            "Migrations are pointed at Neon's pooled endpoint (%s). Set "
+            "DATABASE_URL_UNPOOLED to the direct endpoint (same URL without "
+            "'-pooler' in the host) if a migration fails for no obvious reason.",
+            urlsplit(fallback).hostname)
+    return fallback
 
 
 def describe_database_url(url: str) -> dict:
