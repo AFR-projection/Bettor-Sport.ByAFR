@@ -1,40 +1,54 @@
 """Market Analyst Agent for AI Bettor.
 
 Responsibilities:
-- Compare odds across bookmakers
-- Find best available odds
-- Look at market consensus
-- Detect price differences
-- Detect line movement
-- Provide market confidence
+- compare odds across every bookmaker (line shopping)
+- remove each book's overround and build a cross-book consensus fair price
+- estimate expected total goals from the Over/Under market
+- measure price dispersion, overround and bookmaker coverage
+- surface the best available price per selection
 
-Uses real odds data from backend.
+The analyst only reports what the fetched odds say. It never invents a price.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+import logging
+from typing import Any, Dict, List, Optional
 
-from backend.models.probability_engine import DataQualityChecker
+from backend.core.market_math import (
+    MarketGroup,
+    collect_market_groups,
+    market_totals_estimate,
+)
+
+logger = logging.getLogger("ai-bettor.market_analyst")
 
 
 class MarketAnalystResult:
     """Structured output from Market Analyst agent."""
-    
+
     def __init__(self):
+        # Legacy summary fields (kept stable for the /decide contract).
         self.best_odds: float = 0.0
         self.best_bookmaker: str = ""
-        self.market_consensus: Optional[float] = None
+        self.market_consensus: Optional[Dict[str, Any]] = None
         self.price_difference: float = 0.0
         self.line_movement_detected: bool = False
         self.confidence: int = 0
         self.risk_level: str = "UNKNOWN"
-        
-        # Detailed
         self.all_odds: List[Dict[str, Any]] = []
         self.best_available: Dict[str, Any] = {}
         self.warnings: List[str] = []
-        
+
+        # Structured market view used by the pipeline.
+        self.groups: Dict[str, Dict[str, Any]] = {}
+        self.fair_probabilities: Dict[str, float] = {}
+        self.total_goals_estimate: Optional[float] = None
+        self.average_overround: Optional[float] = None
+        self.bookmaker_count: int = 0
+        self.market_disagreement: float = 0.0
+        self.markets_covered: List[str] = []
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "best_odds": self.best_odds,
@@ -47,190 +61,198 @@ class MarketAnalystResult:
             "all_odds": self.all_odds,
             "best_available": self.best_available,
             "warnings": self.warnings,
+            "groups": self.groups,
+            "fair_probabilities": self.fair_probabilities,
+            "total_goals_estimate": self.total_goals_estimate,
+            "average_overround": self.average_overround,
+            "bookmaker_count": self.bookmaker_count,
+            "market_disagreement": self.market_disagreement,
+            "markets_covered": self.markets_covered,
         }
 
 
 class MarketAnalyst:
-    """
-    Market Analyst Agent - responsible for market analysis.
-    
-    Compares odds across bookmakers, finds best price,
-    and detects market movements.
-    """
-    
-    def __init__(self):
-        self.quality_checker = DataQualityChecker()
+    """Compares bookmakers, removes the vig and reports the fair market price."""
+
+    def __init__(self, default_total_goals: float = 2.7):
+        self.default_total_goals = default_total_goals
         self.price_difference = 0.0
-    
-    def analyze(self, 
-                match_id: str,
-                odds_data: List[Dict[str, Any]]) -> MarketAnalystResult:
-        """
-        Analyze market data for a match.
-        
-        Examines:
-        - Odds from all bookmakers
-        - Best available odds
-        - Market consensus price
-        - Price differences between bookies
-        - Line movement indicators
-        """
+        self._groups: Dict[str, MarketGroup] = {}
+
+    @property
+    def market_groups(self) -> Dict[str, MarketGroup]:
+        """Groups from the most recent analyse call (used by the pipeline)."""
+        return self._groups
+
+    def analyze(self, match_id: str, odds_data: List[Dict[str, Any]]) -> MarketAnalystResult:
         result = MarketAnalystResult()
-        
+        self._groups = {}
+
         if not odds_data:
             result.warnings.append("NO_ODDS_DATA")
             return result
-        
-        # Extract all odds by market and selection
-        all_odds_entries = []
-        
-        for bookmaker_data in odds_data:
-            bookie_name = bookmaker_data.get("name", "Unknown")
-            markets = bookmaker_data.get("markets", [])
-            
-            for market in markets:
-                market_key = market.get("key", "")
-                selections = market.get("selections", [])
-                
-                for selection in selections:
-                    selection_name = selection.get("name", "Unknown")
-                    odd = selection.get("odd", 0)
-                    line = selection.get("line", "")
-                    
-                    entry = {
-                        "bookmaker": bookie_name,
+
+        entries: List[Dict[str, Any]] = []
+        for book in odds_data:
+            if not isinstance(book, dict):
+                continue
+            book_name = str(book.get("name") or book.get("key") or "Unknown")
+            for market in book.get("markets") or []:
+                if not isinstance(market, dict):
+                    continue
+                market_key = str(market.get("key") or "")
+                for selection in market.get("selections") or []:
+                    if not isinstance(selection, dict):
+                        continue
+                    entries.append({
+                        "bookmaker": book_name,
                         "market": market_key,
-                        "selection": selection_name,
-                        "odd": odd,
-                        "line": line,
-                    }
-                    all_odds_entries.append(entry)
-        
-        result.all_odds = all_odds_entries
-        
-        if not all_odds_entries:
+                        "selection": str(selection.get("name") or "Unknown"),
+                        "odd": selection.get("odd", 0),
+                        "line": selection.get("point", market.get("point")),
+                    })
+        result.all_odds = entries
+        if not entries:
             result.warnings.append("NO_SELECTIONS_FOUND")
             return result
-        
-        # Find best odds for each market type
-        # Group by market key
-        markets_by_key: Dict[str, List[Dict]] = {}
-        for entry in all_odds_entries:
-            mk = entry["market"]
-            if mk not in markets_by_key:
-                markets_by_key[mk] = []
-            markets_by_key[mk].append(entry)
-        
-        # Find best odds for key markets (1X2, HDP, OU)
-        best_odds_overall = 0.0
-        best_bookmaker = ""
-        consensus_values = []
-        
-        for market_key in ["1X2", "HDP", "OU"]:
-            if market_key not in markets_by_key:
-                continue
-            
-            market_entries = markets_by_key[market_key]
-            market_odds = [e["odd"] for e in market_entries if e["odd"] and e["odd"] > 1]
-            
-            if not market_odds:
-                continue
-            
-            best_for_market = max(market_odds)
-            best_odds_overall = max(best_odds_overall, best_for_market)
-            
-            # Find which bookmaker offers the best odds
-            best_entry = max(market_entries, key=lambda e: e["odd"] or 0)
-            best_bookmaker = best_entry["bookmaker"]
-            
-            # Collect for consensus calculation
-            consensus_values.extend(market_odds)
-        
-        result.best_odds = round(best_odds_overall, 4) if best_odds_overall > 0 else 0.0
-        result.best_bookmaker = best_bookmaker
-        
-        # Calculate market consensus (average of best odds, or most common price)
-        if consensus_values:
-            # Weighted consensus: average of all valid odds
-            valid_odds = [o for o in consensus_values if o and o > 1]
-            if valid_odds:
-                market_consensus = round(sum(valid_odds) / len(valid_odds), 4)
-                # Also calculate implied probability consensus
-                implied_avg = round(sum(1 / o for o in valid_odds) / len(valid_odds), 6)
-                result.market_consensus = {
-                    "average_odds": market_consensus,
-                    "average_implied_probability": implied_avg,
+
+        self._groups = collect_market_groups(odds_data)
+
+        # ---- structured consensus per market + line ----
+        best_overall = 0.0
+        best_book = ""
+        dispersions: List[float] = []
+        overrounds: List[float] = []
+        for key, group in self._groups.items():
+            consensus = group.consensus()
+            selections: Dict[str, Any] = {}
+            for selection in group.prices:
+                best = group.best_price(selection)
+                selections[selection] = {
+                    "fair_probability": consensus["fair_probabilities"].get(selection),
+                    "dispersion": consensus["dispersion"].get(selection, 0.0),
+                    "best_odds": round(best[1], 4) if best else None,
+                    "best_bookmaker": best[0] if best else None,
+                    "book_count": group.book_count(selection),
+                    "price_spread": group.price_spread(selection),
                 }
-        
-        # Detect price differences (spread between best and worst major bookie)
-        all_valid_odds = [e["odd"] for e in all_odds_entries if e["odd"] and e["odd"] > 1]
-        if len(all_valid_odds) >= 2:
-            price_spread = round(max(all_valid_odds) - min(all_valid_odds), 4)
-            self.price_difference = price_spread
-            result.price_difference = price_spread
-            
-            # Large spread = more opportunity but also more variance
-            if price_spread > 0.2:
-                result.risk_level = "MEDIUM_HIGH"
-            elif price_spread > 0.1:
-                result.risk_level = "MEDIUM"
-            else:
-                result.risk_level = "LOW"
-        
-        # Detect line movement indicators
-        # Check if there are significant differences in line offerings
-        lines_seen = [e.get("line", "") for e in all_odds_entries if e.get("line")]
-        if lines_seen:
-            unique_lines = set(lines_seen)
-            if len(unique_lines) >= 2:
-                result.line_movement_detected = True
-        
-        # Confidence based on market quality
-        confidence = 50
-        
-        # Best odds quality
-        if best_odds_overall >= 1.90:
-            confidence += 20
-        elif best_odds_overall >= 1.80:
-            confidence += 10
-        
-        # Bookmaker diversity
-        unique_bookmakers = len(set(e["bookmaker"] for e in all_odds_entries))
-        if unique_bookmakers >= 5:
-            confidence += 10
-        elif unique_bookmakers >= 3:
-            confidence += 5
-        
-        # Price spread indicator
-        if self.price_difference > 0.15:
-            confidence -= 5  # High spread = more uncertainty
-        
-        result.confidence = max(0, min(100, confidence))
-        
-        # Warnings
-        if not best_bookmaker:
-            result.warnings.append("NO_VALID_BOOKMAKER")
-        
-        if best_odds_overall < 1.5:
-            result.warnings.append("VERY_LOW_ODDS")
-        
-        if not consensus_values:
-            result.warnings.append("NO_CONSENSUS_DATA")
-        
-        return result
-    
-    def quick_analyze(
-        self, 
-        odds_data: List[Dict[str, Any]],
-    ) -> Dict[str, Any]:
-        """Quick market analysis."""
-        result = self.analyze(
-            match_id="quick",
-            odds_data=odds_data,
+                if best and best[1] > best_overall:
+                    best_overall, best_book = best[1], best[0]
+            if consensus["average_overround"] is not None:
+                overrounds.append(consensus["average_overround"])
+            dispersions.extend(v for v in consensus["dispersion"].values())
+            result.groups[key] = {
+                "market": group.market,
+                "point": group.point,
+                "label": group.label,
+                "books_used": consensus["books_used"],
+                "average_overround": consensus["average_overround"],
+                "selections": selections,
+            }
+
+        result.best_odds = round(best_overall, 4) if best_overall > 0 else 0.0
+        result.best_bookmaker = best_book
+        result.best_available = {"odds": result.best_odds, "bookmaker": best_book}
+        result.markets_covered = sorted({g.market for g in self._groups.values()})
+        result.bookmaker_count = len({e["bookmaker"] for e in entries})
+        result.average_overround = (
+            round(sum(overrounds) / len(overrounds), 6) if overrounds else None
         )
-        return result.to_dict()
+        result.market_disagreement = round(max(dispersions), 6) if dispersions else 0.0
+
+        # ---- 1X2 fair probabilities + implied total goals ----
+        for group in self._groups.values():
+            if group.market == "1X2":
+                consensus = group.consensus()
+                if consensus["fair_probabilities"]:
+                    result.fair_probabilities = consensus["fair_probabilities"]
+                break
+        result.total_goals_estimate = market_totals_estimate(self._groups, self.default_total_goals)
+
+        # ---- legacy aggregate consensus (average price across all quotes) ----
+        valid_odds = [
+            float(e["odd"]) for e in entries
+            if isinstance(e["odd"], (int, float)) and e["odd"] > 1
+        ]
+        if valid_odds:
+            result.market_consensus = {
+                "average_odds": round(sum(valid_odds) / len(valid_odds), 4),
+                "average_implied_probability": round(
+                    sum(1 / o for o in valid_odds) / len(valid_odds), 6
+                ),
+                "quotes": len(valid_odds),
+            }
+            if len(valid_odds) >= 2:
+                self.price_difference = round(max(valid_odds) - min(valid_odds), 4)
+                result.price_difference = self.price_difference
+        else:
+            result.warnings.append("NO_CONSENSUS_DATA")
+
+        # ---- risk / confidence from market structure ----
+        result.risk_level = self._risk_level(result)
+        result.confidence = self._confidence(result)
+
+        # ---- line movement: several distinct lines quoted for one market ----
+        lines_per_market: Dict[str, set] = {}
+        for group in self._groups.values():
+            if group.point is not None:
+                lines_per_market.setdefault(group.market, set()).add(group.point)
+        result.line_movement_detected = any(len(v) >= 2 for v in lines_per_market.values())
+
+        if not best_book:
+            result.warnings.append("NO_VALID_BOOKMAKER")
+        if result.bookmaker_count < 3:
+            result.warnings.append("LOW_BOOKMAKER_COVERAGE")
+        if not result.fair_probabilities:
+            result.warnings.append("NO_1X2_CONSENSUS")
+        if result.average_overround is not None and result.average_overround > 0.12:
+            result.warnings.append(f"HIGH_OVERROUND:{result.average_overround:.3f}")
+        return result
+
+    @staticmethod
+    def _risk_level(result: MarketAnalystResult) -> str:
+        """Wide prices / few books / fat margins = a less trustworthy market."""
+        score = 0
+        if result.bookmaker_count < 3:
+            score += 2
+        elif result.bookmaker_count < 5:
+            score += 1
+        if result.market_disagreement > 0.06:
+            score += 2
+        elif result.market_disagreement > 0.03:
+            score += 1
+        if result.average_overround is not None:
+            if result.average_overround > 0.10:
+                score += 2
+            elif result.average_overround > 0.06:
+                score += 1
+        if score >= 4:
+            return "HIGH"
+        if score >= 3:
+            return "MEDIUM_HIGH"
+        if score >= 1:
+            return "MEDIUM"
+        return "LOW"
+
+    @staticmethod
+    def _confidence(result: MarketAnalystResult) -> int:
+        confidence = 45
+        confidence += min(25, result.bookmaker_count * 4)
+        if result.fair_probabilities:
+            confidence += 10
+        if result.total_goals_estimate:
+            confidence += 5
+        if result.average_overround is not None and result.average_overround <= 0.06:
+            confidence += 10
+        if result.market_disagreement > 0.06:
+            confidence -= 10
+        return max(0, min(100, confidence))
+
+    def quick_analyze(self, odds_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Quick market analysis."""
+        return self.analyze(match_id="quick", odds_data=odds_data).to_dict()
 
 
-def get_market_analyst() -> MarketAnalyst:
-    """Factory function to create MarketAnalyst instance."""
-    return MarketAnalyst()
+def get_market_analyst(default_total_goals: float = 2.7) -> MarketAnalyst:
+    """Factory function to create a MarketAnalyst instance."""
+    return MarketAnalyst(default_total_goals=default_total_goals)

@@ -63,6 +63,7 @@ class OddsApiRouter:
                 "last_error": None,
                 "last_used": None,
                 "remaining_requests": None,
+                "used_requests": None,
             }
 
     def remove_key(self, key: str) -> None:
@@ -75,13 +76,23 @@ class OddsApiRouter:
                 self._index = 0
 
     def set_keys(self, keys: List[str]) -> None:
+        """Replace the key set, preserving health state of keys that stay."""
+        cleaned: List[str] = []
+        for key in keys:
+            key = (key or "").strip()
+            if key and key not in cleaned:
+                cleaned.append(key)
         with self._lock:
-            current = list(self._keys)
-            for key in current:
-                if key not in keys:
+            for key in list(self._keys):
+                if key not in cleaned:
                     self.remove_key(key)
-            for key in keys:
+            for key in cleaned:
                 self.add_key(key)
+            # Keep the router order identical to the configured order so key A
+            # really is tried first.
+            self._keys = cleaned
+            if self._index >= len(self._keys):
+                self._index = 0
 
     @property
     def has_keys(self) -> bool:
@@ -89,6 +100,15 @@ class OddsApiRouter:
 
     def key_count(self) -> int:
         return len(self._keys)
+
+    def healthy_count(self) -> int:
+        """Number of keys that are neither disabled nor cooling down."""
+        with self._lock:
+            now = time.time()
+            return sum(
+                1 for key in self._keys
+                if not self._status[key]["disabled"] and self._status[key]["cooldown_until"] <= now
+            )
 
     # ------------------------------------------------------------------
     # Selection / rotation
@@ -111,7 +131,21 @@ class OddsApiRouter:
                 return key
             return None
 
-    def report_success(self, key: str, remaining: Optional[int] = None) -> None:
+    def peek_key(self) -> Optional[str]:
+        """Return the next healthy key WITHOUT advancing rotation (for status)."""
+        with self._lock:
+            if not self._keys:
+                return None
+            now = time.time()
+            for offset in range(1, len(self._keys) + 1):
+                key = self._keys[(self._index + offset) % len(self._keys)]
+                st = self._status[key]
+                if st["disabled"] or st["cooldown_until"] > now:
+                    continue
+                return key
+            return None
+
+    def report_success(self, key: str, remaining: Optional[int] = None, used: Optional[int] = None) -> None:
         with self._lock:
             st = self._status.get(key)
             if not st:
@@ -124,6 +158,8 @@ class OddsApiRouter:
             st["last_used"] = time.time()
             if remaining is not None:
                 st["remaining_requests"] = remaining
+            if used is not None:
+                st["used_requests"] = used
 
     def report_failure(self, key: str, reason: str, http_status: Optional[int] = None) -> None:
         with self._lock:
@@ -185,11 +221,12 @@ class OddsApiRouter:
                     "last_error": st["last_error"],
                     "last_used": st["last_used"],
                     "remaining_requests": st["remaining_requests"],
+                    "used_requests": st.get("used_requests"),
                 })
             return result
 
     def active_key_label(self) -> Optional[str]:
-        key = self.get_key()
+        key = self.peek_key()
         return mask_key(key) if key else None
 
 

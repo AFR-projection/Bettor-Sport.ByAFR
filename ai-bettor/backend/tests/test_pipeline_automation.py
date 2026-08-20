@@ -287,3 +287,57 @@ class TestCLI:
         spec = importlib.util.spec_from_file_location(
             "run_agent", "scripts/run_agent.py")
         assert spec is not None
+
+# ------------------------------------------------------------------
+# A cycle with no API key must say so, not look like an empty scan
+# ------------------------------------------------------------------
+
+class TestNoApiKeyIsReported:
+    def _pipeline(self, has_keys):
+        from backend.services.pipeline import AiBettorPipeline
+
+        class Scout:
+            max_retries = 3
+
+            def __init__(self):
+                self.scans = 0
+
+            @property
+            def has_keys(self):
+                return has_keys
+
+            def scan_matches(self, early_morning_only=None):
+                self.scans += 1
+                return []
+
+        scout = Scout()
+        return AiBettorPipeline(scout=scout, notifier=FakeNotifier()), scout
+
+    def test_cycle_reports_the_missing_key(self):
+        pipeline, scout = self._pipeline(has_keys=False)
+        summary = pipeline.run_cycle()
+        assert summary["status"] == "no_api_key"
+        assert any("Odds API key" in e for e in summary["errors"])
+        assert scout.scans == 0  # no pointless request was made
+        assert pipeline.runtime.snapshot()["data_scout"]["status"] != "COMPLETE"
+
+    def test_a_configured_key_still_scans(self):
+        pipeline, scout = self._pipeline(has_keys=True)
+        summary = pipeline.run_cycle()
+        assert summary["status"] == "completed"
+        assert scout.scans == 1
+
+    def test_a_scout_without_the_flag_is_left_alone(self):
+        """Test doubles and minimal scouts do not advertise `has_keys`; the guard
+        must not lock them out."""
+        from backend.services.pipeline import AiBettorPipeline
+
+        class MinimalScout:
+            max_retries = 3
+
+            def scan_matches(self, early_morning_only=None):
+                return []
+
+        summary = AiBettorPipeline(
+            scout=MinimalScout(), notifier=FakeNotifier()).run_cycle()
+        assert summary["status"] == "completed"

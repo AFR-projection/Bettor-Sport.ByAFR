@@ -1,15 +1,27 @@
-fastapi>=0.109
-uvicorn[standard]>=0.27
-sqlalchemy[asyncio]>=2.0
-alembic>=1.13
-pydantic>=2.5
-pydantic-settings>=2.1
-httpx>=0.27
-numpy>=1.26
-python-dotenv>=1.0
-psycopg2-binary>=2.9
-pytest>=8.0
-pytest-asyncio>=0.23
-aiosqlite>=0.19
-python-dateutil>=2.8
+# AI Bettor — runtime dependencies.
+#
+# Versions are pinned exactly: the test suite and the smoke test were run
+# against these, and an unpinned image can rebuild months later on a different
+# FastAPI/SQLAlchemy and break in production only. Bump deliberately, then
+# re-run `pytest`.
+#
+# The Docker image installs from this file, so anything the app imports at
+# runtime must be listed here.
 
+# --- web layer ---
+fastapi==0.141.1
+starlette==1.6.0
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
+
+# --- database ---
+sqlalchemy==2.0.52
+alembic==1.19.1
+# Postgres driver. Required for Neon; the app refuses to start against a
+# Postgres URL without it (SQLite needs nothing extra).
+psycopg2-binary==2.9.12
+
+# --- integrations & modelling ---
+requests==2.34.2
+numpy==2.4.6
+python-dotenv==1.2.3

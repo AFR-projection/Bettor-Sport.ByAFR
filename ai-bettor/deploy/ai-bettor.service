@@ -1,0 +1,58 @@
+# AI Bettor — systemd unit (the no-Docker deploy path).
+#
+#   sudo cp deploy/ai-bettor.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now ai-bettor
+#   sudo systemctl status ai-bettor
+#   journalctl -u ai-bettor -f
+#
+# Assumes the repo at /opt/ai-bettor with a venv at /opt/ai-bettor/.venv and a
+# filled-in .env in the same directory. Adjust User/paths if yours differ.
+
+[Unit]
+Description=AI Bettor — autonomous betting analysis agent
+Documentation=https://github.com/your-org/ai-bettor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bettor
+Group=bettor
+WorkingDirectory=/opt/ai-bettor
+
+# Secrets stay in the file, out of the unit and out of `systemctl show`.
+EnvironmentFile=/opt/ai-bettor/.env
+
+# One worker on purpose: the automation scheduler runs in-process, and a second
+# worker would run a second scheduler against the same database.
+ExecStart=/opt/ai-bettor/.venv/bin/uvicorn backend.main:app \
+    --host 127.0.0.1 --port 8000 --workers 1 \
+    --proxy-headers --forwarded-allow-ips '*'
+
+Restart=always
+RestartSec=5
+# Give a running cycle a chance to finish its database writes.
+TimeoutStopSec=30
+KillSignal=SIGINT
+
+# --- hardening -------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+# Only the app directory is writable — the SQLite dev fallback and any log file
+# land there, nothing else on disk is reachable.
+ReadWritePaths=/opt/ai-bettor
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-bettor
+
+[Install]
+WantedBy=multi-user.target

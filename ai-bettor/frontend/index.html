@@ -417,12 +417,29 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="card-b">
             <div class="scan-controls">
               <div class="field" style="flex:1;min-width:150px"><label for="scSport">Sport</label><select id="scSport"><option value="soccer" selected>Soccer</option><option value="basketball">Basketball</option><option value="tennis">Tennis</option><option value="baseball">Baseball</option><option value="americanfootball">American Football</option></select></div>
-              <div class="field" style="flex:1;min-width:150px"><label for="scRegion">Region</label><select id="scRegion"><option value="idf" selected>Indonesia</option><option value="eu">Europe</option><option value="uk">United Kingdom</option><option value="us">United States</option><option value="au">Australia</option></select></div>
-              <div class="field" style="flex:2;min-width:220px"><label for="scMarkets">Markets</label><select id="scMarkets"><option value="1X2,h2h,spreads,totals" selected>1X2 + Handicap + Over/Under</option><option value="h2h">1X2 (h2h)</option><option value="spreads">Asian Handicap (spreads)</option><option value="totals">Over/Under (totals)</option></select></div>
+              <div class="field" style="flex:1;min-width:150px"><label for="scRegion">Region</label><select id="scRegion"><option value="eu,uk" selected>Europe + UK</option><option value="eu">Europe</option><option value="uk">United Kingdom</option><option value="us">United States</option><option value="au">Australia</option><option value="eu,uk,us,au">Semua region</option></select></div>
+              <div class="field" style="flex:2;min-width:220px"><label for="scMarkets">Markets</label><select id="scMarkets"><option value="h2h,spreads,totals" selected>1X2 + Handicap + Over/Under</option><option value="h2h">1X2 (h2h)</option><option value="spreads">Asian Handicap (spreads)</option><option value="totals">Over/Under (totals)</option></select></div>
               <button class="btn btn-primary" id="btnScan" style="min-height:40px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Scan Matches</button>
             </div>
             <div id="scanLoading" style="display:none;margin-top:16px"><div class="loading-bar"></div><p style="font-size:12px;color:var(--text-2);margin-top:8px">Scout is fetching fixtures &amp; odds from The Odds API…</p></div>
             <div id="scanResults" style="margin-top:16px;display:flex;flex-direction:column;gap:12px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>Automation Scheduler</h3><span class="badge b-gray" id="autoBadge">—</span></div>
+          <div class="card-b">
+            <div class="kpi-grid" style="margin-bottom:12px">
+              <div class="card kpi"><div class="kpi-label">Interval</div><div class="kpi-value" id="autoInterval">—</div></div>
+              <div class="card kpi"><div class="kpi-label">Siklus Selesai</div><div class="kpi-value" id="autoCycles">—</div></div>
+              <div class="card kpi"><div class="kpi-label">Scan Berikutnya</div><div class="kpi-value" id="autoNext" style="font-size:15px">—</div></div>
+              <div class="card kpi"><div class="kpi-label">Terakhir Selesai</div><div class="kpi-value" id="autoLast" style="font-size:15px">—</div></div>
+            </div>
+            <div id="autoSummary" class="mono" style="font-size:12px;color:var(--text-2)"></div>
+            <div style="margin-top:14px;display:flex;gap:12px;flex-wrap:wrap">
+              <button class="btn" id="btnAutoRefresh">Refresh Status</button>
+              <button class="btn" id="btnAutoToggle">Toggle On/Off</button>
+              <button class="btn btn-primary" id="btnAutoTrigger">Trigger Cycle Sekarang</button>
+            </div>
           </div>
         </div>
         <div class="card">
@@ -564,7 +581,9 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="form-grid">
               <div class="field"><label for="tgToken">Bot Token <small id="tgTokenStatus"></small></label><input type="password" id="tgToken" placeholder="123456:ABC-DEF..." autocomplete="off"></div>
               <div class="field"><label for="tgChat">Chat ID <small id="tgChatStatus"></small></label><input type="text" id="tgChat" placeholder="-1001234567890"></div>
+              <div class="field"><label for="sTgNoBet">Kirim Ringkasan NO BET</label><select id="sTgNoBet"><option value="true">Ya — kabari walau tidak ada pick</option><option value="false">Tidak — hanya kirim pick</option></select></div>
             </div>
+            <div style="margin-top:12px"><button class="btn" id="btnTestTG"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>Kirim Test Message</button></div>
           </div>
         </div>
 
@@ -573,20 +592,36 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="card-b settings-section">
             <div class="form-grid">
               <div class="field"><label for="sMinOdds">Minimum Acceptable Odds</label><input type="number" id="sMinOdds" step="0.01" min="1.01"></div>
+              <div class="field"><label for="sMaxOdds">Maximum Acceptable Odds</label><input type="number" id="sMaxOdds" step="0.01" min="1.02"></div>
               <div class="field"><label for="sMinEdge">Minimum Edge</label><input type="number" id="sMinEdge" step="0.001" min="0"></div>
               <div class="field"><label for="sMinEv">Minimum EV</label><input type="number" id="sMinEv" step="0.001" min="0"></div>
               <div class="field"><label for="sMinConf">Minimum Confidence (0–100)</label><input type="number" id="sMinConf" min="0" max="100"></div>
+              <div class="field"><label for="sScoreThreshold">Score Threshold untuk BET (0–100)</label><input type="number" id="sScoreThreshold" min="0" max="100"></div>
+              <div class="field"><label for="sMinBooks">Minimum Bookmaker per Market</label><input type="number" id="sMinBooks" min="1" max="30"></div>
+              <div class="field"><label for="sMinDq">Minimum Data Quality (0–100)</label><input type="number" id="sMinDq" min="0" max="100"></div>
+              <div class="field"><label for="sMaxUnc">Maximum Uncertainty (0–1)</label><input type="number" id="sMaxUnc" step="0.01" min="0" max="1"></div>
               <div class="field"><label for="sSims">Monte Carlo Simulations</label><input type="number" id="sSims" min="100" step="1000"></div>
+              <div class="field"><label for="sBatches">Simulation Batches (per match)</label><input type="number" id="sBatches" min="1" max="20"></div>
               <div class="field"><label for="sSeed">Random Seed</label><input type="number" id="sSeed"></div>
+              <div class="field"><label for="sBlend">Model Blend Weight (0=pasar, 1=model)</label><input type="number" id="sBlend" step="0.01" min="0" max="1"></div>
+              <div class="field"><label for="sTotalGoals">Default Total Goals (fallback)</label><input type="number" id="sTotalGoals" step="0.05" min="0.5" max="8"></div>
+              <div class="field"><label for="sBankroll">Initial Bankroll</label><input type="number" id="sBankroll" step="1" min="1"></div>
+              <div class="field"><label for="sKelly">Kelly Fraction (0.01–1)</label><input type="number" id="sKelly" step="0.01" min="0.01" max="1"></div>
+              <div class="field"><label for="sMaxStake">Max Stake % per Bet</label><input type="number" id="sMaxStake" step="0.1" min="0.1" max="100"></div>
+              <div class="field"><label for="sMaxExposure">Max Exposure % Bankroll</label><input type="number" id="sMaxExposure" step="0.5" min="1" max="100"></div>
               <div class="field"><label for="sTz">Timezone</label><select id="sTz"><option value="Asia/Jakarta">Asia/Jakarta (WIB)</option><option value="Asia/Makassar">Asia/Makassar (WITA)</option><option value="Asia/Jayapura">Asia/Jayapura (WIT)</option><option value="UTC">UTC</option><option value="Europe/London">Europe/London</option></select></div>
               <div class="field"><label for="sMode">Betting Mode</label><select id="sMode"><option value="PAPER">PAPER (safe)</option><option value="LIVE">LIVE (real stake)</option></select></div>
-              <div class="field"><label for="sBatches">Simulation Batches (per match)</label><input type="number" id="sBatches" min="1" max="10"></div>
+              <div class="field"><label for="sLlm">LLM Review Layer</label><select id="sLlm"><option value="true">Aktif (review saja, bukan sumber probabilitas)</option><option value="false">Mati</option></select></div>
               <div class="field"><label for="sEarlyOnly">Dini Hari Only</label><select id="sEarlyOnly"><option value="true">Ya — hanya kickoff 00:00–06:00 WIB</option><option value="false">Tidak — semua jam</option></select></div>
               <div class="field"><label for="sEarlyEnd">Dini Hari Sampai Jam (WIB)</label><input type="number" id="sEarlyEnd" min="0" max="23"></div>
-              <div class="field"><label for="sEarlyDays">Hari ke Depan (0 = hari ini saja)</label><input type="number" id="sEarlyDays" min="0" max="7"></div>
+              <div class="field"><label for="sEarlyDays">Hari ke Depan (1 = hari ini saja)</label><input type="number" id="sEarlyDays" min="1" max="7"></div>
+              <div class="field"><label for="sSport">Default Sport</label><select id="sSport"><option value="soccer">Soccer</option><option value="basketball">Basketball</option><option value="tennis">Tennis</option><option value="baseball">Baseball</option><option value="americanfootball">American Football</option></select></div>
+              <div class="field"><label for="sRegions">Default Regions</label><select id="sRegions"><option value="eu,uk">Europe + UK</option><option value="eu">Europe</option><option value="uk">United Kingdom</option><option value="us">United States</option><option value="au">Australia</option><option value="eu,uk,us,au">Semua region</option></select></div>
+              <div class="field"><label for="sMarkets">Default Markets</label><select id="sMarkets"><option value="h2h,spreads,totals">1X2 + Handicap + Over/Under</option><option value="h2h">1X2 (h2h)</option><option value="spreads">Asian Handicap (spreads)</option><option value="totals">Over/Under (totals)</option></select></div>
+              <div class="field"><label for="sMaxLeagues">Max Liga per Scan</label><input type="number" id="sMaxLeagues" min="1" max="40"></div>
               <div class="field"><label for="sTgMinScore">Telegram Min Score (0–100)</label><input type="number" id="sTgMinScore" min="0" max="100"></div>
-              <div class="field"><label for="sTgMaxPicks">Telegram Max Picks per Siklus</label><input type="number" id="sTgMaxPicks" min="1" max="10"></div>
-              <div class="field"><label for="sScanInterval">Auto-Scan Interval (detik)</label><input type="number" id="sScanInterval" min="10"></div>
+              <div class="field"><label for="sTgMaxPicks">Telegram Max Picks per Siklus</label><input type="number" id="sTgMaxPicks" min="1" max="50"></div>
+              <div class="field"><label for="sScanInterval">Auto-Scan Interval (detik)</label><input type="number" id="sScanInterval" min="30" max="86400"></div>
               <div class="field"><label for="sAuto">Auto-Scan Otomatis</label><select id="sAuto"><option value="true">Aktif</option><option value="false">Mati</option></select></div>
             </div>
           </div>
@@ -623,10 +658,84 @@ function toast(msg, ok = true) {
 }
 
 /* ---------- API ---------- */
+/* The backend guards every endpoint with a shared token when API_TOKEN is set
+   on the server. It is kept in localStorage and sent on every call; a 401 wipes
+   it and re-opens the gate, so a rotated token cannot leave the dashboard stuck
+   in a silent all-panels-failing state. */
+const TOKEN_KEY = "aiBettorToken";
+
+function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY) || ""; } catch (e) { return ""; }
+}
+function setToken(value) {
+  try { value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+}
+
 async function api(path, opts = {}) {
-  const res = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
+  const token = getToken();
+  if (token) headers["X-API-Token"] = token;
+  const res = await fetch(path, { ...opts, headers });
+  if (res.status === 401) {
+    setToken("");
+    openTokenGate("Token API tidak valid atau sudah diganti. Masukkan ulang.");
+    throw new Error("HTTP 401 — token API tidak valid");
+  }
   if (!res.ok) throw new Error("HTTP " + res.status);
   return res.json();
+}
+
+/* ---------- Token gate ---------- */
+function openTokenGate(message) {
+  if ($("tokenGate")) {
+    if (message) $("tokenGateMsg").textContent = message;
+    return;
+  }
+  const wrap = document.createElement("div");
+  wrap.id = "tokenGate";
+  wrap.style.cssText = "position:fixed;inset:0;z-index:9999;display:flex;align-items:center;"
+    + "justify-content:center;background:rgba(8,11,18,.86);backdrop-filter:blur(4px);padding:24px";
+  wrap.innerHTML =
+    '<div style="max-width:420px;width:100%;background:#111826;border:1px solid #253044;'
+    + 'border-radius:14px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,.5)">'
+    + '<h2 style="margin:0 0 6px;font-size:18px;color:#e8eefc">AI Bettor terkunci</h2>'
+    + '<p id="tokenGateMsg" style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#8fa0bd">'
+    + 'API ini dilindungi token. Masukkan nilai <b>API_TOKEN</b> dari file .env server.</p>'
+    + '<input id="tokenGateInput" type="password" placeholder="API token" autocomplete="off" '
+    + 'style="width:100%;padding:11px 13px;border-radius:9px;border:1px solid #2b374d;'
+    + 'background:#0b1120;color:#e8eefc;font-size:14px;box-sizing:border-box">'
+    + '<button id="tokenGateBtn" style="margin-top:14px;width:100%;padding:11px;border:0;'
+    + 'border-radius:9px;background:#2f6bff;color:#fff;font-size:14px;font-weight:600;'
+    + 'cursor:pointer">Masuk</button>'
+    + '<p id="tokenGateErr" style="margin:12px 0 0;font-size:12px;color:#ff7a7a;min-height:16px"></p>'
+    + '</div>';
+  document.body.appendChild(wrap);
+
+  const submit = async () => {
+    const value = $("tokenGateInput").value.trim();
+    if (!value) { $("tokenGateErr").textContent = "Token masih kosong."; return; }
+    $("tokenGateBtn").disabled = true;
+    setToken(value);
+    try {
+      const res = await fetch("/auth/check", { headers: { "X-API-Token": value } });
+      const body = await res.json();
+      if (body.valid) {
+        wrap.remove();
+        toast("Token diterima");
+        bootDashboard();
+        return;
+      }
+      setToken("");
+      $("tokenGateErr").textContent = "Token salah. Cek API_TOKEN di .env server.";
+    } catch (e) {
+      setToken("");
+      $("tokenGateErr").textContent = "Tidak bisa menghubungi server: " + e.message;
+    }
+    $("tokenGateBtn").disabled = false;
+  };
+  $("tokenGateBtn").addEventListener("click", submit);
+  $("tokenGateInput").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+  $("tokenGateInput").focus();
 }
 
 /* ---------- Agent metadata (task per agent) ---------- */
@@ -736,6 +845,7 @@ function nav(page) {
   if (page === "bankroll") loadBankroll();
   if (page === "agents") loadAgents();
   if (page === "settings") loadSettings();
+  if (page === "scanner") refreshAutomation();
 }
 document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => nav(b.dataset.page)));
 document.querySelectorAll("[data-nav]").forEach(a => a.addEventListener("click", e => { e.preventDefault(); nav(a.dataset.nav); }));
@@ -888,8 +998,16 @@ async function loadPredictions() {
     const rows = await api("/predictions?limit=200");
     const tb = $("predsBody");
     if (!rows.length) { tb.innerHTML = '<tr><td colspan="9" class="empty">No predictions yet</td></tr>'; return; }
-    tb.innerHTML = rows.map(p => '<tr><td class="mono">' + esc(p.match_id) + '</td><td>' + decisionBadge(p.decision) + '</td><td>' + esc(p.selection || "—") + '</td><td class="mono">' + fmt(p.odds) + '</td><td class="mono">' + fmtPct(p.model_probability) + '</td><td class="mono ' + (p.edge >= 0 ? "pos" : "neg") + '">' + fmtPct(p.edge) + '</td><td class="mono ' + (p.ev >= 0 ? "pos" : "neg") + '">' + fmtPct(p.ev) + '</td><td class="mono">' + (p.confidence_score ?? "—") + '</td><td>' + riskBadge(p.risk_level) + '</td></tr>').join("");
+    tb.innerHTML = rows.map(p => '<tr><td class="mono">' + esc(p.match_id) + '</td><td>' + decisionBadge(p.decision) + '</td><td>' + esc(p.selection || "—") + '</td><td class="mono">' + fmt(p.odds) + '</td><td class="mono">' + fmtPct(p.model_probability) + '</td><td class="mono ' + (p.edge >= 0 ? "pos" : "neg") + '">' + fmtPct(p.edge) + '</td><td class="mono ' + (p.ev >= 0 ? "pos" : "neg") + '">' + fmtPct(p.ev) + '</td><td class="mono" title="' + esc(p.score_label || "") + '">' + scoreCell(p) + '</td><td>' + riskBadge(p.risk_level) + '</td></tr>').join("");
   } catch (e) { toast("Gagal load predictions: " + e.message, false); }
+}
+function scoreCell(p) {
+  // pick_score is the 0-100 gate score; older rows only have the brain's
+  // confidence, so fall back to it rather than showing a blank column.
+  if (p.pick_score != null) {
+    return p.pick_score.toFixed(1) + (p.score_label ? ' <span style="color:var(--text-3)">' + esc(p.score_label) + '</span>' : '');
+  }
+  return (p.confidence_score ?? "—") + ' <span style="color:var(--text-3)">conf</span>';
 }
 async function loadOdds() {
   try {
@@ -909,7 +1027,7 @@ async function loadBankroll() {
     $("brRoi").className = "kpi-value " + (bank.roi >= 0 ? "pos" : "neg");
     const tb = $("betsBody");
     if (!bets.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">No bets placed yet</td></tr>'; return; }
-    tb.innerHTML = bets.map(b => '<tr><td class="mono">' + esc(b.match_id) + '</td><td>' + esc(b.market) + '</td><td class="mono">' + fmt(b.odds) + '</td><td class="mono">' + fmtMoney(b.stake) + '</td><td>' + statusBadge(b.status) + '</td><td>' + decisionBadge(b.result) + '</td><td class="mono ' + ((b.profit_loss ?? 0) >= 0 ? "pos" : "neg") + '">' + fmtMoney(b.profit_loss) + '</td><td class="mono">' + esc((b.timestamp || "").slice(0, 16)) + '</td></tr>').join("");
+    tb.innerHTML = bets.map(b => '<tr><td class="mono">' + esc(b.match_id) + '</td><td>' + esc(b.market || "—") + '</td><td class="mono">' + fmt(b.odds) + '</td><td class="mono">' + fmtMoney(b.stake) + '</td><td>' + statusBadge(b.status) + '</td><td>' + (b.result ? decisionBadge(b.result) : '<span class="badge b-gray">PENDING</span>') + '</td><td class="mono ' + (b.profit_loss == null ? "" : (b.profit_loss >= 0 ? "pos" : "neg")) + '">' + (b.profit_loss == null ? "—" : fmtMoney(b.profit_loss)) + '</td><td class="mono">' + esc((b.settled_at || b.created_at || "").replace("T", " ").slice(0, 16)) + '</td></tr>').join("");
   } catch (e) { toast("Gagal load bankroll: " + e.message, false); }
 }
 
@@ -963,21 +1081,29 @@ $("btnBacktest").addEventListener("click", async () => {
     $("btWr").textContent = fmtPct(b.win_rate);
     $("btRoi").textContent = fmtPct(b.roi);
     $("btRoi").className = "kpi-value " + (b.roi >= 0 ? "pos" : "neg");
-    $("btDd").textContent = fmtPct(b.max_drawdown / 100);
+    $("btDd").textContent = fmtMoney(b.max_drawdown);
     $("btCalib").textContent = b.calibration_error != null ? b.calibration_error.toFixed(4) : "—";
     $("btAvgOdds").textContent = b.average_odds != null ? fmt(b.average_odds) : "—";
     $("btAvgEv").textContent = b.average_ev != null ? fmt(b.average_ev) : "—";
     const grade = b.roi >= 0.05 ? "PROFITABLE" : b.roi >= 0 ? "BREAK EVEN" : "UNPROFITABLE";
     $("btGrade").textContent = grade;
     $("btGrade").className = "badge " + (b.roi >= 0.05 ? "b-green" : b.roi >= 0 ? "b-amber" : "b-red");
+    // max_drawdown is an absolute currency amount, not a percentage, and the
+    // group breakdowns are objects ({bets, wins, roi, profit}) — printing them
+    // raw rendered "[object Object]".
+    const group = obj => Object.entries(obj || {})
+      .map(([k, v]) => k + " (" + (v.bets ?? 0) + " bets, " + fmtPct(v.roi || 0) + ")")
+      .join(", ") || "—";
     const metrics = [
-      ["Total bets", b.total_bets], ["Wins", b.wins], ["Losses", b.losses], ["Pushes", b.push_count],
+      ["Total bets", b.total_bets], ["Wins", b.wins], ["Losses", b.losses], ["Pushes", b.pushes],
       ["Win rate", fmtPct(b.win_rate)], ["ROI", fmtPct(b.roi)],
       ["Profit / loss", fmtMoney(b.profit_loss)], ["Total staked", fmtMoney(b.total_staked)],
-      ["Max drawdown", fmtPct(b.max_drawdown / 100)], ["Calibration error", b.calibration_error != null ? b.calibration_error.toFixed(4) : "—"],
+      ["Max drawdown", fmtMoney(b.max_drawdown)], ["Calibration error", b.calibration_error != null ? b.calibration_error.toFixed(4) : "—"],
       ["Average odds", b.average_odds != null ? fmt(b.average_odds) : "—"], ["Average EV", b.average_ev != null ? fmt(b.average_ev) : "—"],
-      ["By market", Object.entries(b.by_market || {}).map(([m, v]) => m + " (" + v + ")").join(", ") || "—"],
-      ["By confidence", Object.entries(b.by_confidence || {}).map(([m, v]) => m + " (" + v + ")").join(", ") || "—"],
+      ["CLV", b.clv != null ? fmtPct(b.clv) : "—"],
+      ["By market", group(b.by_market)],
+      ["By league", group(b.by_league)],
+      ["By confidence", group(b.by_confidence)],
     ];
     $("btRows").innerHTML = metrics.map(([k, v]) => '<tr><td>' + esc(k) + '</td><td class="mono">' + esc(String(v)) + '</td></tr>').join("");
     $("backtestResult").style.display = "block";
@@ -1025,7 +1151,9 @@ $("btnScan").addEventListener("click", async () => {
     };
     const res = await api("/scan", { method: "POST", body: JSON.stringify(payload) });
     const box = $("scanResults");
-    if (!res.matches_scanned) {
+    if (res.status === "no_api_key") {
+      box.innerHTML = '<div class="router-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>Belum ada <b>The Odds API key</b>. Buka tab <b>Settings</b> → API Keys, tambahkan key, lalu scan lagi.</span></div>';
+    } else if (!res.matches_scanned) {
       box.innerHTML = '<div class="router-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg><span>Tidak ada data. Cek halaman <b>Settings</b> untuk API keys, atau The Odds API memang kosong untuk kombinasi sport/region ini. Sistem tidak pernah menciptakan data palsu.</span></div>';
     } else {
       const picks = res.picks || [];
@@ -1035,7 +1163,8 @@ $("btnScan").addEventListener("click", async () => {
       });
     }
     renderPipelineSteps(res.agents || {});
-    toast("Scan selesai: " + res.matches_scanned + " match");
+    if (res.status === "no_api_key") toast("Belum ada The Odds API key — isi dulu di tab Settings", false);
+    else toast("Scan selesai: " + res.matches_scanned + " match");
   } catch (e) { toast("Scan gagal: " + e.message, false); }
   $("scanLoading").style.display = "none";
   $("scanBadge").className = "badge b-blue";
@@ -1069,6 +1198,67 @@ function keyRowHTML(idx, placeholder, statusInfo) {
     '<button class="btn btn-sm btn-danger" data-rm="' + idx + '">Remove</button>' +
     '</div>' +
   '</div>';
+}
+/* One table drives both load and save, so a field can never be shown but
+   silently dropped on save (that was the "settingan tidak tersimpan" bug on
+   the frontend side). Third element is the parser used when saving. */
+const NUM_FIELDS = [
+  ["MIN_ODDS", "sMinOdds", parseFloat],
+  ["MAX_ODDS", "sMaxOdds", parseFloat],
+  ["MIN_EDGE", "sMinEdge", parseFloat],
+  ["MIN_EV", "sMinEv", parseFloat],
+  ["MIN_CONFIDENCE", "sMinConf", parseInt],
+  ["SCORE_BET_THRESHOLD", "sScoreThreshold", parseInt],
+  ["MIN_BOOKMAKERS", "sMinBooks", parseInt],
+  ["MIN_DATA_QUALITY", "sMinDq", parseInt],
+  ["MAX_UNCERTAINTY", "sMaxUnc", parseFloat],
+  ["MONTE_CARLO_SIMULATIONS", "sSims", parseInt],
+  ["SIMULATION_BATCHES", "sBatches", parseInt],
+  ["RANDOM_SEED", "sSeed", parseInt],
+  ["MODEL_BLEND_WEIGHT", "sBlend", parseFloat],
+  ["DEFAULT_TOTAL_GOALS", "sTotalGoals", parseFloat],
+  ["INITIAL_BANKROLL", "sBankroll", parseFloat],
+  ["KELLY_FRACTION", "sKelly", parseFloat],
+  ["MAX_STAKE_PERCENT", "sMaxStake", parseFloat],
+  ["MAX_EXPOSURE_PERCENT", "sMaxExposure", parseFloat],
+  ["EARLY_MORNING_END_HOUR", "sEarlyEnd", parseInt],
+  ["EARLY_MORNING_DAYS", "sEarlyDays", parseInt],
+  ["MAX_LEAGUES_PER_SCAN", "sMaxLeagues", parseInt],
+  ["TELEGRAM_MIN_SCORE", "sTgMinScore", parseInt],
+  ["TELEGRAM_MAX_PICKS", "sTgMaxPicks", parseInt],
+  ["AGENT_SCAN_INTERVAL_SECONDS", "sScanInterval", parseInt],
+];
+const STRING_FIELDS = [
+  ["TIMEZONE", "sTz"],
+  ["BETTING_MODE", "sMode"],
+  ["DEFAULT_SPORT", "sSport"],
+  ["DEFAULT_REGIONS", "sRegions"],
+  ["DEFAULT_MARKETS", "sMarkets"],
+];
+const BOOL_FIELDS = [
+  ["LLM_REVIEW_ENABLED", "sLlm"],
+  ["EARLY_MORNING_ONLY", "sEarlyOnly"],
+  ["TELEGRAM_SEND_NO_BET", "sTgNoBet"],
+  ["SCAN_AUTOMATION_ENABLED", "sAuto"],
+];
+function setVal(id, value) {
+  const el = $(id);
+  if (el) el.value = (value === null || value === undefined) ? "" : value;
+}
+function setBoolVal(id, value) {
+  const el = $(id);
+  if (el) el.value = value ? "true" : "false";
+}
+function setSelectVal(id, value) {
+  const el = $(id);
+  if (!el || value === null || value === undefined || value === "") return;
+  // A stored value the option list does not know about (e.g. a region combo
+  // set from the API) must still be selectable, or saving would silently
+  // overwrite it with the first option.
+  if (el.tagName === "SELECT" && !Array.from(el.options).some(o => o.value === value)) {
+    el.insertAdjacentHTML("beforeend", '<option value="' + esc(value) + '">' + esc(value) + ' (tersimpan)</option>');
+  }
+  el.value = value;
 }
 async function loadSettings() {
   try {
@@ -1108,22 +1298,9 @@ async function loadSettings() {
     $("tgChat").value = s.TELEGRAM_CHAT_ID && !s.TELEGRAM_CHAT_ID.includes("...") ? s.TELEGRAM_CHAT_ID : "";
     $("tgTokenStatus").textContent = s.TELEGRAM_BOT_TOKEN_SET ? "· tersimpan" : "";
     $("tgChatStatus").textContent = s.TELEGRAM_CHAT_ID_SET ? "· tersimpan" : "";
-    $("sMinOdds").value = s.MIN_ODDS;
-    $("sMinEdge").value = s.MIN_EDGE;
-    $("sMinEv").value = s.MIN_EV;
-    $("sMinConf").value = s.MIN_CONFIDENCE;
-    $("sSims").value = s.MONTE_CARLO_SIMULATIONS;
-    $("sSeed").value = s.RANDOM_SEED;
-    $("sTz").value = s.TIMEZONE || "Asia/Jakarta";
-    $("sMode").value = s.BETTING_MODE || "PAPER";
-    $("sBatches").value = s.SIMULATION_BATCHES;
-    $("sEarlyOnly").value = s.EARLY_MORNING_ONLY ? "true" : "false";
-    $("sEarlyEnd").value = s.EARLY_MORNING_END_HOUR;
-    $("sEarlyDays").value = s.EARLY_MORNING_DAYS;
-    $("sTgMinScore").value = s.TELEGRAM_MIN_SCORE;
-    $("sTgMaxPicks").value = s.TELEGRAM_MAX_PICKS;
-    $("sScanInterval").value = s.AGENT_SCAN_INTERVAL_SECONDS;
-    $("sAuto").value = s.SCAN_AUTOMATION_ENABLED ? "true" : "false";
+    STRING_FIELDS.forEach(([key, id]) => setSelectVal(id, s[key]));
+    NUM_FIELDS.forEach(([key, id]) => setVal(id, s[key]));
+    BOOL_FIELDS.forEach(([key, id]) => setBoolVal(id, s[key]));
   } catch (e) { toast("Gagal load settings: " + e.message, false); }
 }
 $("btnAddKey").addEventListener("click", () => {
@@ -1143,54 +1320,82 @@ $("btnSaveSettings").addEventListener("click", async () => {
   if ($("orModel").value.trim()) payload.OPENROUTER_MODEL = $("orModel").value.trim();
   if ($("tgToken").value.trim()) payload.TELEGRAM_BOT_TOKEN = $("tgToken").value.trim();
   if ($("tgChat").value.trim()) payload.TELEGRAM_CHAT_ID = $("tgChat").value.trim();
-  payload.MIN_ODDS = parseFloat($("sMinOdds").value);
-  payload.MIN_EDGE = parseFloat($("sMinEdge").value);
-  payload.MIN_EV = parseFloat($("sMinEv").value);
-  payload.MIN_CONFIDENCE = parseInt($("sMinConf").value, 10);
-  payload.MONTE_CARLO_SIMULATIONS = parseInt($("sSims").value, 10);
-  payload.RANDOM_SEED = parseInt($("sSeed").value, 10);
-  payload.TIMEZONE = $("sTz").value;
-  payload.BETTING_MODE = $("sMode").value;
-  payload.SIMULATION_BATCHES = parseInt($("sBatches").value, 10);
-  payload.EARLY_MORNING_ONLY = $("sEarlyOnly").value === "true";
-  payload.EARLY_MORNING_END_HOUR = parseInt($("sEarlyEnd").value, 10);
-  payload.EARLY_MORNING_DAYS = parseInt($("sEarlyDays").value, 10);
-  payload.TELEGRAM_MIN_SCORE = parseInt($("sTgMinScore").value, 10);
-  payload.TELEGRAM_MAX_PICKS = parseInt($("sTgMaxPicks").value, 10);
-  payload.AGENT_SCAN_INTERVAL_SECONDS = parseInt($("sScanInterval").value, 10);
-  payload.SCAN_AUTOMATION_ENABLED = $("sAuto").value === "true";
+  NUM_FIELDS.forEach(([key, id, parse]) => {
+    const el = $(id);
+    if (!el) return;
+    const raw = String(el.value).trim();
+    if (!raw) return;                       // blank = keep whatever is stored
+    const value = parse === parseInt ? parseInt(raw, 10) : parseFloat(raw);
+    if (Number.isNaN(value)) return;        // never post NaN, it fails validation
+    payload[key] = value;
+  });
+  STRING_FIELDS.forEach(([key, id]) => {
+    const el = $(id);
+    if (el && String(el.value).trim()) payload[key] = String(el.value).trim();
+  });
+  BOOL_FIELDS.forEach(([key, id]) => {
+    const el = $(id);
+    if (el) payload[key] = el.value === "true";
+  });
   $("btnSaveSettings").disabled = true;
   try {
     const res = await api("/settings", { method: "PUT", body: JSON.stringify(payload) });
-    toast("Settings tersimpan. " + res.THE_ODDS_API_KEYS_COUNT + " Odds API key aktif.");
+    // `applied`/`rejected` come back as objects, and a rejected entry marked
+    // "empty_ignored" is the normal "secret left blank, keep the stored one".
+    const appliedCount = Object.keys(res.applied || {}).length;
+    const rejected = Object.entries(res.rejected || {}).filter(([, why]) => why !== "empty_ignored");
+    const failed = res.failed || [];
+    let msg = "Settings tersimpan (" + appliedCount + " field). "
+      + (res.THE_ODDS_API_KEYS_COUNT ?? 0) + " Odds API key aktif.";
+    if (rejected.length || failed.length) {
+      msg += " " + (rejected.length + failed.length) + " field ditolak — lihat console.";
+    }
+    toast(msg, !(rejected.length || failed.length));
+    if (rejected.length) console.warn("Settings rejected:", Object.fromEntries(rejected));
+    if (failed.length) console.warn("Settings failed to persist:", failed);
     refreshHealth();
     loadSettings();
+    refreshAutomation();
   } catch (e) { toast("Gagal simpan settings: " + e.message, false); }
   $("btnSaveSettings").disabled = false;
 });
 $("btnSettingsReset").addEventListener("click", loadSettings);
-function testOddsKey(key) {
-  return api("/settings/test-odds-key", { method: "POST", body: JSON.stringify({ api_key: key }) });
+function testOddsKey(payload) {
+  return api("/settings/test-odds-key", { method: "POST", body: JSON.stringify(payload) });
 }
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-test-key]");
   if (!btn) return;
-  const row = document.getElementById("keyrow-" + btn.dataset.testKey);
+  const idx = parseInt(btn.dataset.testKey, 10);
+  const row = document.getElementById("keyrow-" + idx);
   const inp = row ? row.querySelector(".key-input") : null;
-  const key = (inp ? inp.value : "").trim();
+  const typed = (inp ? inp.value : "").trim();
+  // A masked label ("abcd...wxyz") can never be turned back into a working
+  // key, so an empty box means "test the key already stored in this slot" —
+  // the backend resolves it by index and never sends the secret back.
+  const payload = typed ? { api_key: typed } : { index: idx };
   btn.disabled = true;
   btn.innerHTML = '<span class="spin" style="display:inline-block">&#8635;</span>';
-  (key ? Promise.resolve({ api_key: key }) : loadFirstStoredKey()).then(p => testOddsKey(p.api_key))
-    .then(r => toast(r.message, r.success))
+  testOddsKey(payload)
+    .then(r => toast((r.tested ? "[" + r.tested + "] " : "") + r.message, r.success))
     .catch(err => toast("Test gagal: " + err.message, false))
     .finally(() => { btn.disabled = false; btn.textContent = "Test"; });
 });
-async function loadFirstStoredKey() {
-  const s = await api("/settings");
-  const k = s.THE_ODDS_API_KEYS || [];
-  if (!k.length) throw new Error("Belum ada key tersimpan");
-  return { api_key: k[0].label.replace("...", "") };
-}
+$("btnTestTG").addEventListener("click", async () => {
+  const btn = $("btnTestTG");
+  const label = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = "Mengirim...";
+  const payload = {};
+  if ($("tgToken").value.trim()) payload.bot_token = $("tgToken").value.trim();
+  if ($("tgChat").value.trim()) payload.chat_id = $("tgChat").value.trim();
+  try {
+    const r = await api("/settings/test-telegram", { method: "POST", body: JSON.stringify(payload) });
+    toast(r.message, r.success);
+  } catch (e) { toast("Test Telegram gagal: " + e.message, false); }
+  btn.disabled = false;
+  btn.innerHTML = label;
+});
 $("btnTestOR").addEventListener("click", async () => {
   const btn = $("btnTestOR");
   btn.disabled = true;
@@ -1206,9 +1411,106 @@ $("btnTestOR").addEventListener("click", async () => {
 $("btnRefreshMatches").addEventListener("click", loadMatches);
 $("btnRefreshOdds").addEventListener("click", loadOdds);
 
+/* ---------- Automation scheduler ---------- */
+function shortTime(iso) {
+  if (!iso) return "—";
+  return String(iso).replace("T", " ").slice(0, 19);
+}
+let autoEnabled = false;
+async function refreshAutomation() {
+  if (!$("autoBadge")) return;
+  try {
+    const a = await api("/automation/status");
+    autoEnabled = !!a.enabled;
+    const alive = !!a.scheduler_alive;
+    const running = !!a.cycle_running;
+    const badge = $("autoBadge");
+    badge.textContent = running ? "RUNNING" : (autoEnabled && alive ? "ON" : autoEnabled ? "ON (idle)" : "OFF");
+    badge.className = "badge " + (running ? "b-blue" : autoEnabled && alive ? "b-green" : autoEnabled ? "b-amber" : "b-gray");
+    $("autoInterval").textContent = a.interval_seconds != null ? a.interval_seconds + "s" : "—";
+    $("autoCycles").textContent = a.cycles_completed ?? 0;
+    $("autoNext").textContent = shortTime(a.next_run_at);
+    $("autoLast").textContent = shortTime(a.last_finished_at);
+    $("btnAutoToggle").textContent = autoEnabled ? "Matikan Automation" : "Aktifkan Automation";
+    const s = a.last_summary;
+    let line = "";
+    if (a.last_error) line = "ERROR: " + a.last_error;
+    else if (s) {
+      line = "Trigger terakhir: " + (a.last_trigger || "—")
+        + " · status " + (s.status || "—")
+        + " · scan " + (s.matches_scanned ?? "—")
+        + " · dianalisa " + (s.matches_analyzed ?? "—")
+        + " · BET " + (s.bet_candidates ?? 0)
+        + " · telegram " + (s.telegram_sent ?? 0)
+        + " · " + (s.duration_seconds ?? "?") + "s";
+    }
+    $("autoSummary").textContent = line;
+  } catch (e) {
+    $("autoBadge").textContent = "UNKNOWN";
+    $("autoBadge").className = "badge b-red";
+    $("autoSummary").textContent = "Gagal ambil status automation: " + e.message;
+  }
+}
+if ($("btnAutoRefresh")) {
+  $("btnAutoRefresh").addEventListener("click", refreshAutomation);
+  $("btnAutoToggle").addEventListener("click", async () => {
+    const btn = $("btnAutoToggle");
+    btn.disabled = true;
+    try {
+      const r = await api("/automation/toggle", { method: "POST", body: JSON.stringify({ enabled: !autoEnabled }) });
+      toast("Automation " + (r.enabled ? "aktif" : "dimatikan"));
+      await refreshAutomation();
+      loadSettings();
+    } catch (e) { toast("Gagal toggle automation: " + e.message, false); }
+    btn.disabled = false;
+  });
+  $("btnAutoTrigger").addEventListener("click", async () => {
+    const btn = $("btnAutoTrigger");
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = "Menjalankan...";
+    try {
+      const r = await api("/automation/trigger", { method: "POST" });
+      if (r.status === "skipped") toast("Siklus sedang berjalan, trigger dilewati", false);
+      else if (r.status === "no_api_key") toast("Belum ada The Odds API key — isi dulu di tab Settings", false);
+      else if (r.status === "failed") toast("Siklus gagal: " + (r.error || "unknown"), false);
+      else toast("Siklus selesai · " + (r.matches_scanned ?? 0) + " match, "
+        + (r.bet_candidates ?? 0) + " BET, " + (r.telegram_sent ?? 0) + " terkirim");
+      await refreshAutomation();
+      refreshDashboard();
+    } catch (e) { toast("Trigger gagal: " + e.message, false); }
+    btn.textContent = label;
+    btn.disabled = false;
+  });
+  setInterval(refreshAutomation, 20000);
+}
+
 /* ---------- Boot ---------- */
-loadAgents();
-refreshDashboard();
+function bootDashboard() {
+  loadAgents();
+  refreshDashboard();
+  refreshAutomation();
+}
+
+/* `/auth/check` is public, so the gate can tell "wrong token" apart from
+   "server down" before any panel starts failing. */
+(async function boot() {
+  try {
+    const token = getToken();
+    const res = await fetch("/auth/check", token ? { headers: { "X-API-Token": token } } : {});
+    const body = await res.json();
+    if (body.auth_required && !body.valid) {
+      openTokenGate(token
+        ? "Token yang tersimpan sudah tidak valid. Masukkan ulang."
+        : "API ini dilindungi token. Masukkan nilai API_TOKEN dari file .env server.");
+      return;
+    }
+  } catch (e) {
+    // Older build without /auth/check, or the API is briefly unreachable —
+    // load anyway; individual calls surface their own errors.
+  }
+  bootDashboard();
+})();
 </script>
 </body>
 </html>

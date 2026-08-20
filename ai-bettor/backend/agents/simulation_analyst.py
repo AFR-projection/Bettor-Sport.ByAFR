@@ -223,26 +223,89 @@ class SimulationAnalyst:
                     simulation_count: Optional[int] = None) -> Dict[str, float]:
         """
         Simulate Over/Under market.
-        
+
         Returns over/under probabilities for given line.
         """
         n = simulation_count or self.simulations
-        
+
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
-        
+
         home_goals = np.random.poisson(home_lambda, n)
         away_goals = np.random.poisson(away_lambda, n)
-        
+
         total_goals = home_goals + away_goals
-        
+
         over_line = (total_goals > line).sum() / n
         under_line = (total_goals <= line).sum() / n
-        
+
         return {
             "over_probability": round(over_line, 6),
             "under_probability": round(under_line, 6),
         }
+
+    def simulate_markets(
+        self,
+        home_lambda: float,
+        away_lambda: float,
+        ou_lines: Optional[List[float]] = None,
+        hdp_lines: Optional[List[float]] = None,
+        simulation_count: Optional[int] = None,
+        batches: int = 1,
+    ) -> Dict[str, float]:
+        """Probabilities for every market/line the market offers, from one sample.
+
+        Returns a mapping using the candidate key convention used by
+        `backend.core.market_math.build_candidates`:
+        ``"1X2|Home"``, ``"OU|2.5|Over"``, ``"HDP|-0.5|Home"``.
+
+        Sampling once per batch and deriving all lines from the same draw keeps
+        the probabilities internally consistent (and is far cheaper than one
+        simulation per market).
+        """
+        n = simulation_count or self.simulations
+        batches = max(1, batches)
+        base_seed = self.random_seed
+        ou_lines = sorted({float(line) for line in (ou_lines or [])})
+        hdp_lines = sorted({float(line) for line in (hdp_lines or [])})
+
+        totals: Dict[str, float] = {}
+
+        def _add(key: str, value: float) -> None:
+            totals[key] = totals.get(key, 0.0) + float(value)
+
+        for batch in range(batches):
+            if base_seed is not None:
+                np.random.seed(base_seed + batch)
+            home_goals = np.random.poisson(home_lambda, n)
+            away_goals = np.random.poisson(away_lambda, n)
+            margin = home_goals - away_goals
+            total_goals = home_goals + away_goals
+
+            _add("1X2|Home", (margin > 0).mean())
+            _add("1X2|Draw", (margin == 0).mean())
+            _add("1X2|Away", (margin < 0).mean())
+
+            for line in ou_lines:
+                over = (total_goals > line).mean()
+                push = (total_goals == line).mean()
+                live = 1.0 - push
+                if live <= 0:
+                    continue
+                _add(f"OU|{line:g}|Over", over / live)
+                _add(f"OU|{line:g}|Under", (1.0 - over - push) / live)
+
+            for line in hdp_lines:
+                adjusted = margin + line
+                cover = (adjusted > 0).mean()
+                push = (adjusted == 0).mean()
+                live = 1.0 - push
+                if live <= 0:
+                    continue
+                _add(f"HDP|{line:g}|Home", cover / live)
+                _add(f"HDP|{line:g}|Away", (1.0 - cover - push) / live)
+
+        return {key: round(value / batches, 6) for key, value in totals.items()}
     
     def quick_simulate(self,
                        home_lambda: float,

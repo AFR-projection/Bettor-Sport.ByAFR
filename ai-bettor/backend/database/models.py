@@ -89,6 +89,10 @@ class Prediction(Base):
     edge = Column(Float, nullable=False)
     ev = Column(Float, nullable=False)
     confidence_score = Column(Integer, nullable=False)
+    # The 0-100 gate score from PickScoringEngine (and its band label). Kept
+    # separate from confidence_score, which is the brain's own conviction.
+    pick_score = Column(Float, nullable=True)
+    score_label = Column(String(30), nullable=True)
     risk_level = Column(String(20), nullable=False)
     reasoning = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)

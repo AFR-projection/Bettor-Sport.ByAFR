@@ -24,10 +24,21 @@ DEFAULT_BANKROLL = 1000.0
 class PaperBettingService:
     """Manages virtual bankroll and bet records."""
 
-    def __init__(self, mode: Optional[str] = None, initial_bankroll: float = DEFAULT_BANKROLL):
+    def __init__(self, mode: Optional[str] = None, initial_bankroll: Optional[float] = None):
+        # Live settings first so a change from the dashboard (mode, starting
+        # bankroll) applies without restarting the process.
+        from backend.services.settings_service import get_setting
+
         settings = get_settings()
-        self.mode = (mode or settings.BETTING_MODE).upper()
-        self.initial_bankroll = initial_bankroll
+        self.mode = str(mode or get_setting("BETTING_MODE", settings.BETTING_MODE)
+                        or "PAPER").upper()
+        if initial_bankroll is None:
+            try:
+                initial_bankroll = float(get_setting(
+                    "INITIAL_BANKROLL", getattr(settings, "INITIAL_BANKROLL", DEFAULT_BANKROLL)))
+            except (TypeError, ValueError):
+                initial_bankroll = DEFAULT_BANKROLL
+        self.initial_bankroll = float(initial_bankroll or DEFAULT_BANKROLL)
 
     @property
     def is_paper(self) -> bool:
@@ -75,7 +86,7 @@ class PaperBettingService:
                 match_id=decision.get("match_id"),
                 decision="BET",
                 market=decision.get("market"),
-                selection=decision.get("selection"),
+                selection=(decision.get("selection") or decision.get("label")),
                 odds=odds,
                 bookmaker=decision.get("bookmaker"),
                 stake=stake,
@@ -113,8 +124,11 @@ class PaperBettingService:
 
             record = session.query(BankrollRecord).order_by(BankrollRecord.id.desc()).first()
 
+            # The stake was withdrawn when the bet was placed, so a win must
+            # return the full payout (stake + profit), not the profit alone —
+            # crediting only the profit silently ate the stake on every winner.
             if outcome == "win":
-                payout = bet.potential_profit
+                payout = bet.stake + (bet.potential_profit or 0.0)
             elif outcome == "push":
                 payout = bet.stake  # stake returned
             else:
@@ -169,12 +183,28 @@ class PaperBettingService:
                     "selection": b.selection,
                     "odds": b.odds,
                     "stake": b.stake,
+                    "potential_profit": b.potential_profit,
+                    # Realised P/L, so the dashboard does not have to guess it
+                    # from status+result. None while the bet is still pending.
+                    "profit_loss": self._profit_loss(b),
                     "status": b.status,
                     "result": b.result,
                     "created_at": b.created_at.isoformat() if b.created_at else None,
+                    "settled_at": b.settled_at.isoformat() if b.settled_at else None,
                 }
                 for b in bets
             ]
+
+    @staticmethod
+    def _profit_loss(bet: Bet) -> Optional[float]:
+        if bet.status != "settled" or not bet.result:
+            return None
+        result = str(bet.result).lower()
+        if result == "win":
+            return float(bet.potential_profit or 0.0)
+        if result == "push":
+            return 0.0
+        return -float(bet.stake or 0.0)
 
 
 def get_paper_betting() -> PaperBettingService:

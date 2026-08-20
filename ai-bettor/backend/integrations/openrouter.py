@@ -36,8 +36,14 @@ class OpenRouterClient:
         max_retries: int = 2,
     ):
         settings = get_settings()
-        self.api_key = api_key or settings.OPENROUTER_API_KEY
-        self.model = model or settings.OPENROUTER_MODEL
+        # Live settings win over the .env snapshot so a key saved from the
+        # dashboard works without restarting the process.
+        from backend.services.settings_service import get_setting
+
+        self.api_key = api_key or get_setting(
+            "OPENROUTER_API_KEY", settings.OPENROUTER_API_KEY) or ""
+        self.model = model or get_setting(
+            "OPENROUTER_MODEL", settings.OPENROUTER_MODEL) or "openrouter/auto"
         self.timeout = timeout
         self.max_retries = max_retries
         self.session = requests.Session()

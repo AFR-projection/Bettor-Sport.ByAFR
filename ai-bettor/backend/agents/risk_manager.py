@@ -1,34 +1,45 @@
 """Risk Manager Agent for AI Bettor.
 
-Responsibilities:
-- Evaluate uncertainty
-- Evaluate data quality
-- Evaluate odds
-- Evaluate market movement
-- Evaluate exposure
-- Evaluate drawdown
-- Evaluate correlation
-- Provide risk level
-- Can veto recommendations
+The Risk Manager is the last line of defence before the Bettor Brain and it can
+veto a bet that every other agent likes. It evaluates:
 
-Risk Manager can decide NO BET even if other agents recommend BET.
+- data quality (bookmaker coverage, market coverage, odds validity)
+- edge / EV sufficiency
+- price stability across books (is the market disagreeing with itself?)
+- bankroll exposure and drawdown
+- correlation with what is already staked
+- overall uncertainty
+
+A veto always produces NO BET.
 """
 
 from __future__ import annotations
 
+import logging
+import statistics
 from typing import Any, Dict, List, Optional
 
-from backend.models.probability_engine import DataQualityChecker
+logger = logging.getLogger("ai-bettor.risk_manager")
+
+
+def _field(source: Any, name: str, default: Any) -> Any:
+    """Read an attribute from an agent result object or a plain dict."""
+    if isinstance(source, dict):
+        value = source.get(name, default)
+    else:
+        value = getattr(source, name, default)
+    return default if value is None else value
+
 
 
 class RiskManagerResult:
     """Structured output from Risk Manager agent."""
-    
+
     def __init__(self):
         self.risk_level: str = "UNKNOWN"
         self.veto_decision: bool = False
         self.veto_reason: str = ""
-        
+
         # Detailed evaluations
         self.data_quality_score: float = 100.0
         self.edge_sufficient: bool = False
@@ -37,13 +48,16 @@ class RiskManagerResult:
         self.exposure_concern: bool = False
         self.drawdown_concern: bool = False
         self.correlation_concern: bool = False
-        
+
         # Quantified
         self.uncertainty_score: float = 0.0
         self.risk_adjusted_edge: float = 0.0
-        
+        self.exposure_percent: float = 0.0
+        self.drawdown_percent: float = 0.0
+        self.recommended_max_stake: float = 0.0
+
         self.warnings: List[str] = []
-        
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "risk_level": self.risk_level,
@@ -58,263 +72,264 @@ class RiskManagerResult:
             "correlation_concern": self.correlation_concern,
             "uncertainty_score": self.uncertainty_score,
             "risk_adjusted_edge": self.risk_adjusted_edge,
+            "exposure_percent": self.exposure_percent,
+            "drawdown_percent": self.drawdown_percent,
+            "recommended_max_stake": self.recommended_max_stake,
             "warnings": self.warnings,
         }
 
 
 class RiskManager:
-    """
-    Risk Manager Agent - responsible for risk assessment.
-    
-    Can veto recommendations from other agents.
-    Returns NO BET if risk is too high.
-    """
-    
+    """Assesses risk and can veto a recommendation."""
+
     def __init__(
         self,
         min_data_quality: int = 50,
-        max_uncertainty: float = 0.3,
+        max_uncertainty: float = 0.5,
         max_correlation_risk: float = 0.3,
         veto_edge_threshold: float = 0.01,
         veto_ev_threshold: float = 0.01,
+        max_exposure_percent: float = 20.0,
+        max_drawdown_percent: float = 15.0,
+        max_stake_percent: float = 2.0,
     ):
         self.min_data_quality = min_data_quality
         self.max_uncertainty = max_uncertainty
         self.max_correlation_risk = max_correlation_risk
         self.veto_edge_threshold = veto_edge_threshold
         self.veto_ev_threshold = veto_ev_threshold
-        self.quality_checker = DataQualityChecker()
-    
-    def assess(self,
-                quant_result: "QuantAnalystResult",
-                simulation_result: "SimulationAnalystResult",
-                odds_data: List[Dict[str, Any]],
-                current_exposure: float = 0.0,
-                current_drawdown: float = 0.0,
-                bankroll: float = 1000.0,
-                recent_results: Optional[List[str]] = None) -> RiskManagerResult:
-        """
-        Assess risk for a betting opportunity.
-        
-        Evaluates multiple factors and can issue a veto.
-        Returns risk level and whether to veto.
-        """
+        self.max_exposure_percent = max_exposure_percent
+        self.max_drawdown_percent = max_drawdown_percent
+        self.max_stake_percent = max_stake_percent
+
+    def assess(
+        self,
+        quant_result: Any,
+        simulation_result: Any,
+        odds_data: List[Dict[str, Any]],
+        current_exposure: float = 0.0,
+        current_drawdown: float = 0.0,
+        bankroll: float = 1000.0,
+        recent_results: Optional[List[str]] = None,
+        data_quality: Optional[float] = None,
+        market_dispersion: Optional[float] = None,
+        book_count: Optional[int] = None,
+        open_bets_same_match: int = 0,
+    ) -> RiskManagerResult:
+        """Assess risk for one betting opportunity and decide on a veto."""
         result = RiskManagerResult()
-        
-        # 1. Data quality assessment
-        data_quality = self._assess_data_quality(
-            quant_result, simulation_result, odds_data
-        )
-        result.data_quality_score = data_quality
-        
-        if data_quality < self.min_data_quality:
+
+        edge = float(_field(quant_result, "edge", 0.0))
+        ev = float(_field(quant_result, "ev", 0.0))
+        sim_warnings = list(_field(simulation_result, "warnings", []))
+        stability = float(_field(simulation_result, "stability", 1.0))
+
+        # 1. Data quality — supplied by the scout/market when available.
+        if data_quality is None:
+            data_quality = self._assess_data_quality(odds_data, sim_warnings)
+        result.data_quality_score = round(float(data_quality), 2)
+        if result.data_quality_score < self.min_data_quality:
             result.warnings.append("POOR_DATA_QUALITY")
-        
-        # 2. Edge sufficiency
-        edge_sufficient = quant_result.edge > self.veto_edge_threshold
-        result.edge_sufficient = edge_sufficient
-        
-        if not edge_sufficient:
+
+        # 2 & 3. Edge / EV sufficiency.
+        result.edge_sufficient = edge > self.veto_edge_threshold
+        if not result.edge_sufficient:
             result.warnings.append("INSUFFICIENT_EDGE")
-        
-        # 3. EV sufficiency
-        ev_sufficient = quant_result.ev > self.veto_ev_threshold
-        result.ev_sufficient = ev_sufficient
-        
-        if not ev_sufficient:
+        result.ev_sufficient = ev > self.veto_ev_threshold
+        if not result.ev_sufficient:
             result.warnings.append("INSUFFICIENT_EV")
-        
-        # 4. Odds stability
-        odds_stable = self._check_odds_stability(odds_data)
-        result.odds_stable = odds_stable
-        
-        if not odds_stable:
+
+        # 4. Price stability across bookmakers.
+        result.odds_stable = self._check_odds_stability(odds_data, market_dispersion)
+        if not result.odds_stable:
             result.warnings.append("ODDS_VOLATILITY")
-        
-        # 5. Exposure check
-        exposure_pct = (current_exposure / bankroll) * 100 if bankroll > 0 else 0
-        result.exposure_concern = exposure_pct > 20  # >20% of bankroll is concerning
-        
+
+        # 5 & 6. Bankroll exposure and drawdown.
+        exposure_pct = (current_exposure / bankroll * 100.0) if bankroll > 0 else 0.0
+        drawdown_pct = (current_drawdown / bankroll * 100.0) if bankroll > 0 else 0.0
+        result.exposure_percent = round(exposure_pct, 2)
+        result.drawdown_percent = round(drawdown_pct, 2)
+        result.exposure_concern = exposure_pct > self.max_exposure_percent
         if result.exposure_concern:
             result.warnings.append("HIGH_EXPOSURE")
-        
-        # 6. Drawdown check
-        drawdown_pct = (current_drawdown / bankroll) * 100 if bankroll > 0 else 0
-        result.drawdown_concern = drawdown_pct > 15  # >15% drawdown is concerning
-        
+        result.drawdown_concern = drawdown_pct > self.max_drawdown_percent
         if result.drawdown_concern:
             result.warnings.append("HIGH_DRAWDOWN")
-        
-        # 7. Uncertainty score
-        uncertainty_factors = 0
-        
-        if not edge_sufficient:
-            uncertainty_factors += 1
-        if not ev_sufficient:
-            uncertainty_factors += 1
-        if not odds_stable:
-            uncertainty_factors += 1
-        if data_quality < 50:
-            uncertainty_factors += 1
-        if exposure_pct > 15:
-            uncertainty_factors += 1
-        if drawdown_pct > 10:
-            uncertainty_factors += 1
-        
-        self_uncertainty = uncertainty_factors / 6.0  # Normalize to 0-1
-        result.uncertainty_score = round(self_uncertainty, 4)
-        
-        # 8. Correlation check (simplified)
-        # Check if this bet is correlated with existing exposure
-        result.correlation_concern = (
-            exposure_pct > 10 and len(recent_results or []) > 3
+
+        # 7. Uncertainty score (0-1).
+        uncertainty_factors = [
+            not result.edge_sufficient,
+            not result.ev_sufficient,
+            not result.odds_stable,
+            result.data_quality_score < self.min_data_quality,
+            exposure_pct > self.max_exposure_percent * 0.75,
+            drawdown_pct > self.max_drawdown_percent * 0.66,
+            stability < 0.5,
+            (book_count is not None and book_count < 3),
+        ]
+        result.uncertainty_score = round(sum(1 for f in uncertainty_factors if f) / len(uncertainty_factors), 4)
+
+        # 8. Correlation: already exposed to the same match, or a losing streak
+        #    while carrying open risk.
+        result.correlation_concern = bool(
+            open_bets_same_match > 0
+            or (exposure_pct > self.max_exposure_percent * 0.5 and len(recent_results or []) > 3)
         )
         if result.correlation_concern:
             result.warnings.append("CORRELATION_RISK")
-        
-        # 9. Determine risk level
+
+        # 9. Risk-adjusted edge: shrink the edge by the uncertainty we carry.
+        result.risk_adjusted_edge = round(edge * (1.0 - result.uncertainty_score), 6)
+
+        # 10. Risk level.
         risk_score = (
-            self_uncertainty * 50 +  # 50 points max for uncertainty
-            (1 if not edge_sufficient else 0) * 20 +  # 20 max for edge
-            (1 if not ev_sufficient else 0) * 20 +  # 20 max for EV
-            (1 if not odds_stable else 0) * 10  # 10 for odds stability
+            result.uncertainty_score * 50
+            + (0 if result.edge_sufficient else 20)
+            + (0 if result.ev_sufficient else 20)
+            + (0 if result.odds_stable else 10)
         )
-        
-        risk_level_pct = min(100, risk_score)
-        
-        if risk_level_pct >= 70:
+        if risk_score >= 70:
             result.risk_level = "HIGH"
-        elif risk_level_pct >= 40:
+        elif risk_score >= 40:
             result.risk_level = "MEDIUM"
         else:
             result.risk_level = "LOW"
-        
-        # 10. Veto decision
-        # Veto if:
-        # - Data quality too poor
-        # - Insufficient edge
-        # - Insufficient EV  
-        # - High uncertainty
-        # - High exposure
-        # - High drawdown
-        
-        veto_conditions = []
-        
-        if data_quality < self.min_data_quality:
+
+        # 11. Stake ceiling this bet must respect.
+        stake_cap = bankroll * (self.max_stake_percent / 100.0)
+        if result.risk_level == "HIGH":
+            stake_cap *= 0.4
+        elif result.risk_level == "MEDIUM":
+            stake_cap *= 0.7
+        result.recommended_max_stake = round(max(0.0, stake_cap), 2)
+
+        # 12. Veto decision.
+        veto_conditions: List[str] = []
+        if result.data_quality_score < self.min_data_quality:
             veto_conditions.append("POOR_DATA_QUALITY")
-        
-        if not edge_sufficient:
+        if not result.edge_sufficient:
             veto_conditions.append("INSUFFICIENT_EDGE")
-        
-        if not ev_sufficient:
+        if not result.ev_sufficient:
             veto_conditions.append("INSUFFICIENT_EV")
-        
-        if self_uncertainty > self.max_uncertainty:
+        if result.uncertainty_score > self.max_uncertainty:
             veto_conditions.append("HIGH_UNCERTAINTY")
-        
         if result.exposure_concern:
             veto_conditions.append("HIGH_EXPOSURE")
-        
         if result.drawdown_concern:
             veto_conditions.append("HIGH_DRAWDOWN")
-        
-        result.veto_decision = len(veto_conditions) > 0
-        result.veto_reason = "; ".join(veto_conditions) if veto_conditions else ""
-        
+        if open_bets_same_match > 0:
+            veto_conditions.append("ALREADY_EXPOSED_TO_MATCH")
+
+        result.veto_decision = bool(veto_conditions)
+        result.veto_reason = "; ".join(veto_conditions)
         return result
-    
-    def _assess_data_quality(self,
-                             quant_result: "QuantAnalystResult",
-                             simulation_result: "SimulationAnalystResult",
-                             odds_data: List[Dict[str, Any]]) -> int:
-        """Assess data quality score 0-100."""
-        score = 100
-        
-        # Edge too small = lower quality
-        if quant_result.edge < 0.01:
-            score -= 30
-        
-        # EV negative or very small
-        if quant_result.ev < 0.01:
-            score -= 25
-        
-        # Simulation warnings
-        if simulation_result.warnings:
-            score -= 15 * min(3, len(simulation_result.warnings))
-        
-        # Odds data quality
-        if odds_data:
-            total_odds = 0
-            valid_odds = 0
-            for bookie in odds_data:
-                for market in bookie.get("markets", []):
-                    for selection in market.get("selections", []):
-                        odd = selection.get("odd", 0)
-                        total_odds += 1
-                        if odd and odd > 1:
-                            valid_odds += 1
-            
-            if total_odds > 0 and valid_odds / total_odds < 0.6:
-                score -= 20
-        
-        return max(0, min(100, score))
-    
-    def _check_odds_stability(self, odds_data: List[Dict[str, Any]]) -> bool:
-        """Check if odds are stable (not extremely volatile)."""
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _assess_data_quality(self, odds_data: List[Dict[str, Any]], sim_warnings: List[str]) -> int:
+        """Fallback data-quality estimate derived from the odds themselves."""
         if not odds_data:
+            return 0
+
+        score = 100
+        books = {str(b.get("name") or b.get("key") or "") for b in odds_data if isinstance(b, dict)}
+        books.discard("")
+        if len(books) == 0:
+            return 0
+        if len(books) == 1:
+            score -= 20
+        elif len(books) == 2:
+            score -= 10
+
+        markets = set()
+        total = valid = 0
+        for book in odds_data:
+            if not isinstance(book, dict):
+                continue
+            for market in book.get("markets", []) or []:
+                markets.add(str(market.get("key") or ""))
+                for selection in market.get("selections", []) or []:
+                    total += 1
+                    odd = selection.get("odd")
+                    if isinstance(odd, (int, float)) and odd > 1:
+                        valid += 1
+        if total == 0:
+            return 0
+        if valid / total < 0.9:
+            score -= 20
+        if "1X2" not in markets:
+            score -= 10
+        score -= min(15, 5 * len(sim_warnings))
+        return max(0, min(100, score))
+
+    @staticmethod
+    def _check_odds_stability(
+        odds_data: List[Dict[str, Any]],
+        market_dispersion: Optional[float] = None,
+    ) -> bool:
+        """Stable = books broadly agree on the fair probability.
+
+        When the market analyst supplied a de-vigged dispersion we use it (that
+        is the statistically correct measure). Otherwise fall back to comparing
+        prices *within each selection* — comparing prices across different
+        selections, as the previous implementation did, always looked volatile.
+        """
+        if market_dispersion is not None:
+            return market_dispersion <= 0.05
+
+        by_selection: Dict[str, List[float]] = {}
+        for book in odds_data or []:
+            if not isinstance(book, dict):
+                continue
+            for market in book.get("markets", []) or []:
+                for selection in market.get("selections", []) or []:
+                    odd = selection.get("odd")
+                    if not isinstance(odd, (int, float)) or odd <= 1:
+                        continue
+                    key = f"{market.get('key')}|{selection.get('point', market.get('point'))}|{selection.get('name')}"
+                    by_selection.setdefault(key, []).append(float(odd))
+
+        comparable = [values for values in by_selection.values() if len(values) >= 2]
+        if not comparable:
             return False
-        
-        all_odds = []
-        for bookie in odds_data:
-            for market in bookie.get("markets", []):
-                for selection in market.get("selections", []):
-                    odd = selection.get("odd", 0)
-                    if odd and odd > 1:
-                        all_odds.append(odd)
-        
-        if len(all_odds) < 3:
-            return False
-        
-        import numpy as np
-        odds_arr = np.array(all_odds)
-        mean_odd = np.mean(odds_arr)
-        std_odd = np.std(odds_arr)
-        
-        if mean_odd == 0:
-            return False
-        
-        cv = std_odd / mean_odd  # Coefficient of variation
-        
-        # CV > 0.2 indicates high volatility for odds
-        return cv < 0.2
-    
-    def quick_assess(self,
-                     quant_result: Dict[str, Any],
-                     simulation_result: Dict[str, Any],
-                     odds_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+        for values in comparable:
+            mean = statistics.fmean(values)
+            if mean <= 0:
+                return False
+            if (statistics.pstdev(values) / mean) > 0.08:
+                return False
+        return True
+
+    def quick_assess(
+        self,
+        quant_result: Any,
+        simulation_result: Any,
+        odds_data: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
         """Quick risk assessment."""
-        # Need model instance for full assessment
-        # This is a simplified version
-        result = self.assess(
-            quant_result=quant_result,
-            simulation_result=simulation_result,
-            odds_data=odds_data,
-        )
-        return result.to_dict()
+        return self.assess(quant_result, simulation_result, odds_data).to_dict()
 
 
 def get_risk_manager(
     min_data_quality: int = 50,
-    max_uncertainty: float = 0.3,
+    max_uncertainty: float = 0.5,
     max_correlation_risk: float = 0.3,
     veto_edge_threshold: float = 0.01,
     veto_ev_threshold: float = 0.01,
+    max_exposure_percent: float = 20.0,
+    max_drawdown_percent: float = 15.0,
+    max_stake_percent: float = 2.0,
 ) -> RiskManager:
-    """Factory function to create RiskManager instance."""
+    """Factory function to create a RiskManager instance."""
     return RiskManager(
         min_data_quality=min_data_quality,
         max_uncertainty=max_uncertainty,
         max_correlation_risk=max_correlation_risk,
         veto_edge_threshold=veto_edge_threshold,
         veto_ev_threshold=veto_ev_threshold,
+        max_exposure_percent=max_exposure_percent,
+        max_drawdown_percent=max_drawdown_percent,
+        max_stake_percent=max_stake_percent,
     )

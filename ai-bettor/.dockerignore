@@ -1,0 +1,30 @@
+# Keep the build context small and secrets out of the image.
+.git
+.gitignore
+.venv
+venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+
+# Secrets — the container gets them from env_file at runtime, never baked in.
+.env
+*.env
+!deploy/env.production.example
+
+# Local databases and logs
+*.db
+*.sqlite
+*.sqlite3
+pgdata/
+logs/
+*.log
+
+# Tests and docs are not needed to serve the app
+backend/tests/
+migrations/
+README.md
+.pytest_cache
+.idea
+.vscode

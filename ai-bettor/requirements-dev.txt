@@ -1,0 +1,11 @@
+# Test/development extras on top of the runtime pins.
+#
+#   pip install -r requirements-dev.txt
+#
+# Kept out of requirements.txt so the production image does not ship a test
+# runner: the Dockerfile installs requirements.txt only.
+-r requirements.txt
+
+pytest==9.1.1
+# fastapi.testclient is built on httpx.
+httpx==0.28.1

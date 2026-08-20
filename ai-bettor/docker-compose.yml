@@ -1,43 +1,33 @@
-version: "3.9"
+# AI Bettor — single service. The database lives on Neon (serverless
+# PostgreSQL), so there is no local `db` container and no local volume to lose.
+#
+# Everything comes from `.env` next to this file — DATABASE_URL, API_TOKEN,
+# ALLOWED_ORIGINS and the integration keys. Nothing is defaulted here, so a
+# missing value fails visibly at startup instead of running with a placeholder.
+#
+#   cp deploy/env.production.example .env   # then fill it in
+#   docker compose up -d --build
+#
+# `version:` is intentionally omitted — it is obsolete in Compose v2 and only
+# prints a warning.
 
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ai_bettor
-      POSTGRES_USER: ai_bettor
-      POSTGRES_PASSWORD: ai_bettor
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ai_bettor"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   backend:
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
-    environment:
-      DATABASE_URL: postgresql+psycopg2://ai_bettor:ai_bettor@db:5432/ai_bettor
-      THE_ODDS_API_KEY: ${THE_ODDS_API_KEY:-}
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/auto}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
-      TIMEZONE: ${TIMEZONE:-Asia/Jakarta}
-      MONTE_CARLO_SIMULATIONS: ${MONTE_CARLO_SIMULATIONS:-20000}
-      RANDOM_SEED: ${RANDOM_SEED:-42}
-      BETTING_MODE: ${BETTING_MODE:-PAPER}
+    image: ai-bettor:latest
+    container_name: ai-bettor
+    env_file: .env
+    # Bound to loopback: Nginx terminates TLS and proxies to it. Publishing
+    # 0.0.0.0:8000 would expose the API directly, bypassing the reverse proxy.
     ports:
-      - "8000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000
-
-volumes:
-  pgdata:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+    # A crash loop against a bad DATABASE_URL should not hammer Neon forever.
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

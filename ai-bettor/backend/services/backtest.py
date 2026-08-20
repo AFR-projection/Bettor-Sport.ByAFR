@@ -30,6 +30,7 @@ class BacktestResult:
     win_rate: float = 0.0
     roi: float = 0.0
     profit_loss: float = 0.0
+    total_staked: float = 0.0
     average_odds: float = 0.0
     average_ev: float = 0.0
     max_drawdown: float = 0.0
@@ -49,6 +50,7 @@ class BacktestResult:
             "win_rate": round(self.win_rate, 4),
             "roi": round(self.roi, 4),
             "profit_loss": round(self.profit_loss, 2),
+            "total_staked": round(self.total_staked, 2),
             "average_odds": round(self.average_odds, 4),
             "average_ev": round(self.average_ev, 4),
             "max_drawdown": round(self.max_drawdown, 2),
@@ -143,6 +145,7 @@ class Backtester:
             self._aggregate(result.by_confidence, conf_bucket, bet["odds"], profit, stake=self.stake_per_bet)
 
         if result.total_bets > 0:
+            result.total_staked = result.total_bets * self.stake_per_bet
             result.win_rate = result.wins / result.total_bets
             result.roi = result.profit_loss / (result.total_bets * self.stake_per_bet)
             result.average_odds = total_odds / result.total_bets

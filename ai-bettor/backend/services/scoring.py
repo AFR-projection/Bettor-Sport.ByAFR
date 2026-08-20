@@ -77,10 +77,22 @@ class ScoringThresholds:
 class PickScoringEngine:
     """Scores a candidate pick 0-100 based on quantitative factors."""
 
-    def __init__(self, weights: Optional[ScoreWeights] = None):
-        settings = get_settings()
+    # Calibration: the edge/EV a genuinely excellent soccer pick carries.
+    # 8% edge and 0.15 EV per unit are already top-of-the-market numbers, so
+    # they earn full marks on their factor instead of an unreachable ceiling.
+    EDGE_FULL_MARKS = 0.08
+    EV_FULL_MARKS = 0.15
+
+    def __init__(self, weights: Optional[ScoreWeights] = None,
+                 bet_threshold: Optional[int] = None):
         self.weights = (weights or ScoreWeights()).normalize()
         self.thresholds = ScoringThresholds()
+        if bet_threshold is None:
+            from backend.services.settings_service import get_setting
+            bet_threshold = get_setting("SCORE_BET_THRESHOLD", get_settings().SCORE_BET_THRESHOLD)
+        # A pick qualifies at or above this score. The label boundaries above
+        # stay fixed; this is the *action* threshold and it is configurable.
+        self.bet_threshold = max(0, min(100, int(bet_threshold)))
 
     def score(self, candidate: Dict[str, Any]) -> Dict[str, Any]:
         """Score a candidate pick. Returns score + per-factor breakdown.
@@ -96,13 +108,16 @@ class PickScoringEngine:
         mp = candidate.get("model_probability", 0)
         factors["model_probability"] = min(100.0, max(0.0, mp * 100 * 1.2))
 
-        # 2. EV factor: scale EV per unit stake
+        # 2. EV factor: full marks at EV_FULL_MARKS per unit staked.
+        # Scaled to what a de-vig + line-shopping engine really finds, not to a
+        # fantasy ceiling — otherwise no honest pick could ever reach the
+        # action threshold and the engine would never bet at all.
         ev = candidate.get("ev", 0)
-        factors["ev"] = min(100.0, max(0.0, ev * 200))
+        factors["ev"] = min(100.0, max(0.0, ev / self.EV_FULL_MARKS * 100))
 
-        # 3. Edge factor: edge percentage points
+        # 3. Edge factor: full marks at EDGE_FULL_MARKS of edge
         edge = candidate.get("edge", 0)
-        factors["edge"] = min(100.0, max(0.0, edge * 100 * 8))
+        factors["edge"] = min(100.0, max(0.0, edge / self.EDGE_FULL_MARKS * 100))
 
         # 4. Simulation stability
         stability = candidate.get("simulation_stability", 0)
@@ -136,12 +151,13 @@ class PickScoringEngine:
         )
         score = round(min(100.0, max(0.0, score)), 1)
 
-        # Bookmaker consensus penalty (less consensus = deduction)
+        # Bookmaker consensus penalty (fewer books quoting = bigger deduction).
+        # Deepest band first: an `elif` chain the other way round never fires.
         consensus = candidate.get("bookmaker_consensus", 1.0)
-        if consensus < 0.6:
-            score -= 5
-        elif consensus < 0.4:
+        if consensus < 0.4:
             score -= 10
+        elif consensus < 0.6:
+            score -= 5
         score = round(min(100.0, max(0.0, score)), 1)
 
         return {
@@ -149,6 +165,7 @@ class PickScoringEngine:
             "label": self.thresholds.label(score),
             "factors": {k: round(v, 2) for k, v in factors.items()},
             "weights": self.weights.__dict__,
+            "bet_threshold": self.bet_threshold,
             "thresholds": {
                 "no_bet": self.thresholds.no_bet_max,
                 "pass": self.thresholds.pass_max,
@@ -159,8 +176,9 @@ class PickScoringEngine:
         }
 
     def is_bettable(self, score_result: Dict[str, Any]) -> bool:
-        return score_result["score"] >= self.thresholds.bet_max
+        """True when the score reaches the configured action threshold."""
+        return float(score_result.get("score", 0)) >= self.bet_threshold
 
 
-def get_scoring_engine() -> PickScoringEngine:
-    return PickScoringEngine()
+def get_scoring_engine(bet_threshold: Optional[int] = None) -> PickScoringEngine:
+    return PickScoringEngine(bet_threshold=bet_threshold)
